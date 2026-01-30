@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CustomersTable } from "@/components/CustomersTable";
 import { AddCustomerForm } from "@/components/AddCustomerForm";
 import { Users } from "lucide-react";
+import type { Customer, CustomerPic } from "@/lib/types/database";
 
 export default async function CustomersPage() {
   const supabase = await createClient();
@@ -24,13 +25,25 @@ export default async function CustomersPage() {
     );
   }
 
-  const normalized = (customers ?? []).map((c) => ({
-    id: c.id,
-    name: c.name,
-    sector: c.sector,
-    created_at: c.created_at,
-    pics: Array.isArray(c.customer_pics) ? c.customer_pics : [],
-  }));
+  const normalized: (Customer & { pics: CustomerPic[] })[] = (customers ?? []).map((c) => {
+    const pics = Array.isArray(c.customer_pics) ? c.customer_pics : [];
+    return {
+      id: c.id,
+      name: c.name,
+      sector: c.sector ?? null,
+      created_at: c.created_at,
+      pics: pics.map(
+        (p: { id?: string; nama: string | null; email: string | null; no_hp: string | null; jabatan: string | null }): CustomerPic => ({
+          id: p.id,
+          customer_id: c.id,
+          nama: p.nama,
+          email: p.email,
+          no_hp: p.no_hp,
+          jabatan: p.jabatan,
+        })
+      ),
+    };
+  });
 
   return (
     <div className="space-y-6">
