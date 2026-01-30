@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { CustomersTable } from "@/components/CustomersTable";
 import { AddCustomerForm } from "@/components/AddCustomerForm";
+import { ExportCustomersButton } from "@/components/ExportCustomersButton";
 import { Users } from "lucide-react";
 import type { Customer, CustomerPic } from "@/lib/types/database";
 
@@ -47,11 +48,12 @@ export default async function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-800">Customers</h1>
           <p className="mt-1 text-slate-600">Master data customer. Sector & PIC optional.</p>
         </div>
+        <ExportCustomersButton customers={normalized} />
       </div>
       <div className="card p-6">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-medium text-slate-800">

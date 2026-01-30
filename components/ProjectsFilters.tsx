@@ -31,19 +31,19 @@ export function ProjectsFilters({
   }
 
   return (
-    <div className="card flex flex-wrap items-end gap-4 p-4">
-      <span className="flex items-center gap-2 text-sm font-medium text-slate-700">
-        <Filter className="h-4 w-4" />
+    <div className="card flex flex-wrap items-end gap-3 p-4 sm:gap-4">
+      <span className="flex w-full items-center gap-2 text-sm font-medium text-slate-700 sm:w-auto">
+        <Filter className="h-4 w-4 shrink-0" />
         Filters
       </span>
-      <div>
+      <div className="w-full min-w-0 sm:w-auto">
         <label className="mb-1 block text-xs font-medium text-slate-500">
           Progress Type
         </label>
         <select
           value={progressType ?? ""}
           onChange={(e) => updateFilter("progress_type", e.target.value)}
-          className="input-field min-w-[140px]"
+          className="input-field w-full min-w-0 sm:min-w-[140px]"
         >
           <option value="">All</option>
           {PROGRESS_TYPES.map((t) => (
@@ -60,7 +60,7 @@ export function ProjectsFilters({
         <select
           value={prospect ?? ""}
           onChange={(e) => updateFilter("prospect", e.target.value)}
-          className="input-field min-w-[140px]"
+          className="input-field w-full min-w-0 sm:min-w-[140px]"
         >
           <option value="">All</option>
           {PROSPECT_OPTIONS.map((p) => (
@@ -70,14 +70,14 @@ export function ProjectsFilters({
           ))}
         </select>
       </div>
-      <div>
+      <div className="w-full min-w-0 sm:w-auto">
         <label className="mb-1 block text-xs font-medium text-slate-500">
           Sales
         </label>
         <select
           value={salesId ?? ""}
           onChange={(e) => updateFilter("sales_id", e.target.value)}
-          className="input-field min-w-[160px]"
+          className="input-field w-full min-w-0 sm:min-w-[160px]"
         >
           <option value="">All</option>
           {salesOptions.map((s) => (

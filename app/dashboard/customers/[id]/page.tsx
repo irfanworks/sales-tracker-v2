@@ -4,6 +4,19 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CustomerEditForm } from "@/components/CustomerEditForm";
 import { SECTOR_OPTIONS } from "@/lib/types/database";
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: customer } = await supabase.from("customers").select("name").eq("id", id).single();
+  if (!customer) return { title: "Customer | Enercon Sales Tracker" };
+  return { title: `${customer.name} | Enercon Sales Tracker` };
+}
 
 export default async function CustomerEditPage({
   params,
@@ -26,7 +39,7 @@ export default async function CustomerEditPage({
   const { data: pics } = await supabase
     .from("customer_pics")
     .select("id, nama, email, no_hp, jabatan")
-    .eq("customer_id", id)
+    .eq("customer_id", customer.id)
     .order("created_at", { ascending: true });
 
   return (

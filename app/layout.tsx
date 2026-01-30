@@ -12,8 +12,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sales Tracker",
+  title: "Enercon Indonesia's Sales Tracker",
   description: "Track sales projects and customer pipeline",
+  icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({

@@ -31,10 +31,13 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4">
-      <div className="card w-full max-w-md p-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-6">
+      <div className="card w-full max-w-md p-6 sm:p-8">
+        <div className="mb-6 flex justify-center">
+          <img src="/logo.png" alt="Enercon Indonesia" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
+        </div>
         <h1 className="mb-2 text-xl font-semibold text-slate-800">Sign in</h1>
-        <p className="mb-6 text-sm text-slate-600">Use your Supabase Auth account.</p>
+        <p className="mb-6 text-sm text-slate-600">Use your account to login.</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">

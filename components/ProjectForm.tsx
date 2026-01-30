@@ -82,23 +82,31 @@ export function ProjectForm({
         setLoading(false);
         return;
       }
-      const { error: insertError } = await supabase.from("projects").insert({
-        no_quote: noQuote,
-        project_name: projectName,
-        customer_id: customerId,
-        value: numValue,
-        progress_type: progressType,
-        prospect,
-        weekly_update: weeklyUpdate || null,
-        sales_id: user.id,
-      });
+      const { data: inserted, error: insertError } = await supabase
+        .from("projects")
+        .insert({
+          no_quote: noQuote,
+          project_name: projectName,
+          customer_id: customerId,
+          value: numValue,
+          progress_type: progressType,
+          prospect,
+          weekly_update: weeklyUpdate || null,
+          sales_id: user.id,
+        })
+        .select("id")
+        .single();
 
       setLoading(false);
       if (insertError) {
         setError(insertError.message);
         return;
       }
-      router.push("/dashboard");
+      if (inserted?.id) {
+        router.push(`/dashboard/projects/${inserted.id}`);
+      } else {
+        router.push("/dashboard");
+      }
     }
     router.refresh();
   }

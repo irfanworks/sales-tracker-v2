@@ -12,11 +12,11 @@ const navItems = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-export function DashboardNav({ role }: { role: string }) {
+export function DashboardNav({ role, onNavigate }: { role: string; onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <nav className="w-56 shrink-0 border-r border-slate-200 bg-white p-4">
+    <nav className="p-4">
       <ul className="space-y-1">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -24,14 +24,15 @@ export function DashboardNav({ role }: { role: string }) {
             <li key={href}>
               <Link
                 href={href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                onClick={onNavigate}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                   isActive
                     ? "bg-cyan-50 text-cyan-800"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
                 }`}
               >
-                <Icon className="h-5 w-5" />
-                {label}
+                <Icon className="h-5 w-5 shrink-0" />
+                <span>{label}</span>
               </Link>
             </li>
           );

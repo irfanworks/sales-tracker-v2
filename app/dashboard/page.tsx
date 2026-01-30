@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ProjectsTable } from "@/components/ProjectsTable";
 import { ProjectsFilters } from "@/components/ProjectsFilters";
 import { DashboardMetrics } from "@/components/DashboardMetrics";
+import { ExportProjectsButton } from "@/components/ExportProjectsButton";
 
 export default async function DashboardPage({
   searchParams,
@@ -84,11 +85,26 @@ export default async function DashboardPage({
   const winCount = projects.filter((p: { progress_type: string }) => p.progress_type === "Win").length;
   const loseCount = projects.filter((p: { progress_type: string }) => p.progress_type === "Lose").length;
 
+  const exportProjects = projectsWithSales.map((p: Record<string, unknown>) => ({
+    id: p.id,
+    created_at: p.created_at,
+    no_quote: p.no_quote,
+    project_name: p.project_name,
+    value: Number(p.value),
+    progress_type: p.progress_type,
+    prospect: p.prospect,
+    sales_name: p.sales_name ?? null,
+    customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
+  }));
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-800">Dashboard</h1>
-        <p className="mt-1 text-slate-600">Overview of all projects.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-800">Dashboard</h1>
+          <p className="mt-1 text-slate-600">Overview of all projects.</p>
+        </div>
+        <ExportProjectsButton projects={exportProjects} />
       </div>
       <ProjectsFilters
         progressType={params.progress_type}

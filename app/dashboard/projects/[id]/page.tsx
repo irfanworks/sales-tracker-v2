@@ -6,7 +6,22 @@ import { ArrowLeft, Edit } from "lucide-react";
 import { ProjectForm } from "@/components/ProjectForm";
 import { ProjectUpdateHistory } from "@/components/ProjectUpdateHistory";
 import { AddProjectUpdate } from "@/components/AddProjectUpdate";
+import { ProgressBadge } from "@/components/ProgressBadge";
+import { ProspectBadge } from "@/components/ProspectBadge";
 import { PROGRESS_TYPES, PROSPECT_OPTIONS } from "@/lib/types/database";
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: project } = await supabase.from("projects").select("project_name").eq("id", id).single();
+  if (!project) return { title: "Project | Enercon Sales Tracker" };
+  return { title: `${project.project_name} | Enercon Sales Tracker` };
+}
 
 export default async function ProjectDetailPage({
   params,
@@ -19,21 +34,23 @@ export default async function ProjectDetailPage({
   const { edit } = await searchParams;
   const supabase = await createClient();
 
+  const selectCols = `
+    id,
+    created_at,
+    no_quote,
+    project_name,
+    customer_id,
+    value,
+    progress_type,
+    prospect,
+    weekly_update,
+    sales_id,
+    customers ( id, name )
+  `;
+
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select(`
-      id,
-      created_at,
-      no_quote,
-      project_name,
-      customer_id,
-      value,
-      progress_type,
-      prospect,
-      weekly_update,
-      sales_id,
-      customers ( id, name )
-    `)
+    .select(selectCols)
     .eq("id", id)
     .single();
 
@@ -106,13 +123,13 @@ export default async function ProjectDetailPage({
       ) : (
         <>
           <div className="card overflow-hidden">
-            <div className="border-b border-slate-200 bg-slate-50/80 px-6 py-4">
-              <h1 className="text-xl font-semibold text-slate-800">{project.project_name}</h1>
+            <div className="border-b border-slate-200 bg-slate-50/80 px-4 py-4 sm:px-6">
+              <h1 className="text-lg font-semibold text-slate-800 sm:text-xl">{project.project_name}</h1>
               <p className="mt-1 text-sm text-slate-600">
                 {project.no_quote} · {format(new Date(project.created_at), "dd MMM yyyy")}
               </p>
             </div>
-            <dl className="grid gap-4 p-6 sm:grid-cols-2">
+            <dl className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
               <div>
                 <dt className="text-xs font-medium uppercase text-slate-500">Customer</dt>
                 <dd className="mt-1 text-slate-800">{(customer as { name: string })?.name ?? "—"}</dd>
@@ -130,14 +147,14 @@ export default async function ProjectDetailPage({
               <div>
                 <dt className="text-xs font-medium uppercase text-slate-500">Progress Type</dt>
                 <dd className="mt-1">
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-700">
-                    {project.progress_type}
-                  </span>
+                  <ProgressBadge value={project.progress_type} />
                 </dd>
               </div>
               <div>
                 <dt className="text-xs font-medium uppercase text-slate-500">Prospect</dt>
-                <dd className="mt-1 text-slate-700">{project.prospect}</dd>
+                <dd className="mt-1">
+                  <ProspectBadge value={project.prospect} />
+                </dd>
               </div>
               <div>
                 <dt className="text-xs font-medium uppercase text-slate-500">Sales</dt>
@@ -156,9 +173,8 @@ export default async function ProjectDetailPage({
             </dl>
           </div>
 
-          <div className="card p-6">
+          <div className="card p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-semibold text-slate-800">Project updates</h2>
-            <AddProjectUpdate projectId={id} />
             <ProjectUpdateHistory
               updates={(updates ?? []).map((u) => ({
                 id: u.id,
@@ -167,6 +183,7 @@ export default async function ProjectDetailPage({
                 created_by: u.created_by,
               }))}
             />
+            <AddProjectUpdate projectId={id} />
           </div>
         </>
       )}
