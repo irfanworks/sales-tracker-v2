@@ -17,14 +17,12 @@ const emptyPic = (): PicRow => ({ nama: "", email: "", no_hp: "", jabatan: "" })
 
 export function CustomerEditForm({
   customerId,
-  customerSlug,
   initialName,
   initialSector,
   initialPics,
   sectorOptions,
 }: {
   customerId: string;
-  customerSlug: string;
   initialName: string;
   initialSector: string;
   initialPics: PicRow[];

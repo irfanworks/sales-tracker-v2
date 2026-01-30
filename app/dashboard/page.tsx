@@ -86,15 +86,15 @@ export default async function DashboardPage({
   const loseCount = projects.filter((p: { progress_type: string }) => p.progress_type === "Lose").length;
 
   const exportProjects = projectsWithSales.map((p: Record<string, unknown>) => ({
-    id: p.id,
-    created_at: p.created_at,
-    no_quote: p.no_quote,
-    project_name: p.project_name,
+    id: p.id as string,
+    created_at: p.created_at as string,
+    no_quote: p.no_quote as string,
+    project_name: p.project_name as string,
     value: Number(p.value),
-    progress_type: p.progress_type,
-    prospect: p.prospect,
-    sales_name: p.sales_name ?? null,
-    customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
+    progress_type: p.progress_type as string,
+    prospect: p.prospect as string,
+    sales_name: (p.sales_name ?? null) as string | null,
+    customer: (Array.isArray(p.customers) ? p.customers[0] : p.customers) as { id: string; name: string } | undefined,
   }));
 
   return (
