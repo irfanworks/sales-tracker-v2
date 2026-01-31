@@ -42,6 +42,8 @@ export default async function CustomerEditPage({
     .eq("customer_id", customer.id)
     .order("created_at", { ascending: true });
 
+  const picsList = pics ?? [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -53,6 +55,38 @@ export default async function CustomerEditPage({
           Back to customers
         </Link>
       </div>
+
+      {picsList.length > 0 && (
+        <div className="card overflow-hidden">
+          <div className="border-b border-slate-200 bg-slate-50/80 px-4 py-3 sm:px-6">
+            <h2 className="text-lg font-medium text-slate-800">PIC</h2>
+            <p className="mt-0.5 text-sm text-slate-600">Person in charge (tersimpan)</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[400px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-100/80">
+                  <th className="px-4 py-3 font-medium text-slate-700">Nama</th>
+                  <th className="px-4 py-3 font-medium text-slate-700">Email</th>
+                  <th className="px-4 py-3 font-medium text-slate-700">No. HP</th>
+                  <th className="px-4 py-3 font-medium text-slate-700">Jabatan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {picsList.map((p) => (
+                  <tr key={p.id} className="border-b border-slate-100 last:border-0">
+                    <td className="px-4 py-3 text-slate-700">{p.nama ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-600">{p.email ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-600">{p.no_hp ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-600">{p.jabatan ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="card p-6">
         <h1 className="mb-6 text-xl font-semibold text-slate-800">Edit customer</h1>
         <CustomerEditForm

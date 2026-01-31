@@ -14,11 +14,16 @@ export function ProjectsFilters({
   prospect,
   salesId,
   salesOptions,
+  showSalesFilter = true,
+  basePath = "/dashboard",
 }: {
   progressType?: string;
   prospect?: string;
   salesId?: string;
   salesOptions: SalesOption[];
+  /** Hanya Admin yang bisa filter by Sales; role Sales tidak perlu (hanya lihat project sendiri) */
+  showSalesFilter?: boolean;
+  basePath?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,7 +32,7 @@ export function ProjectsFilters({
     const next = new URLSearchParams(searchParams.toString());
     if (value) next.set(key, value);
     else next.delete(key);
-    router.push(`/dashboard?${next.toString()}`);
+    router.push(`${basePath}?${next.toString()}`);
   }
 
   return (
@@ -70,27 +75,29 @@ export function ProjectsFilters({
           ))}
         </select>
       </div>
-      <div className="w-full min-w-0 sm:w-auto">
-        <label className="mb-1 block text-xs font-medium text-slate-500">
-          Sales
-        </label>
-        <select
-          value={salesId ?? ""}
-          onChange={(e) => updateFilter("sales_id", e.target.value)}
-          className="input-field w-full min-w-0 sm:min-w-[160px]"
-        >
-          <option value="">All</option>
-          {salesOptions.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.display_name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {showSalesFilter && (
+        <div className="w-full min-w-0 sm:w-auto">
+          <label className="mb-1 block text-xs font-medium text-slate-500">
+            Sales
+          </label>
+          <select
+            value={salesId ?? ""}
+            onChange={(e) => updateFilter("sales_id", e.target.value)}
+            className="input-field w-full min-w-0 sm:min-w-[160px]"
+          >
+            <option value="">All</option>
+            {salesOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.display_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {(progressType || prospect || salesId) && (
         <button
           type="button"
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push(basePath)}
           className="btn-secondary text-sm"
         >
           Clear

@@ -10,6 +10,12 @@ export default async function ProjectsListPage({
   const supabase = await createClient();
   const params = await searchParams;
 
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
+    : { data: null };
+  const isAdmin = profile?.role === "admin";
+
   let query = supabase
     .from("projects")
     .select(`
@@ -78,6 +84,8 @@ export default async function ProjectsListPage({
         prospect={params.prospect}
         salesId={params.sales_id}
         salesOptions={displaySalesOptions}
+        showSalesFilter={isAdmin}
+        basePath="/dashboard/projects"
       />
       <div className="card overflow-hidden">
         <ProjectsTable
