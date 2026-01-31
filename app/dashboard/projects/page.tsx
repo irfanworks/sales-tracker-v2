@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProjectsTable } from "@/components/ProjectsTable";
 import { ProjectsFilters } from "@/components/ProjectsFilters";
+import { ExportProjectsButton } from "@/components/ExportProjectsButton";
 
 export default async function ProjectsListPage({
   searchParams,
@@ -73,11 +74,26 @@ export default async function ProjectsListPage({
     );
   }
 
+  const exportProjects = projectsWithSales.map((p: Record<string, unknown>) => ({
+    id: p.id as string,
+    created_at: p.created_at as string,
+    no_quote: p.no_quote as string,
+    project_name: p.project_name as string,
+    value: Number(p.value),
+    progress_type: p.progress_type as string,
+    prospect: p.prospect as string,
+    sales_name: (p.sales_name ?? null) as string | null,
+    customer: (Array.isArray(p.customers) ? p.customers[0] : p.customers) as { id: string; name: string } | undefined,
+  }));
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-800">Projects</h1>
-        <p className="mt-1 text-slate-600">List of all projects.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-800">Projects</h1>
+          <p className="mt-1 text-slate-600">List of all projects.</p>
+        </div>
+        <ExportProjectsButton projects={exportProjects} />
       </div>
       <ProjectsFilters
         progressType={params.progress_type}
