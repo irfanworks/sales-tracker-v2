@@ -2,18 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderKanban, Users, PlusCircle, Settings } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Users, PlusCircle, Settings, ClipboardList, BarChart3 } from "lucide-react";
 
-const navItems = [
+const navItemsAll = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/projects/new", label: "New Project", icon: PlusCircle },
   { href: "/dashboard/customers", label: "Customers", icon: Users },
+  { href: "/dashboard/bd-updates", label: "BD Updates", icon: ClipboardList },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
+];
+
+const navItemsAdmin = [
+  { href: "/dashboard/admin/bd-monitoring", label: "BD Monitoring", icon: BarChart3 },
 ];
 
 export function DashboardNav({ role, onNavigate }: { role: string; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const isAdmin = role === "admin";
+  const navItems = [...navItemsAll, ...(isAdmin ? navItemsAdmin : [])];
 
   return (
     <nav className="p-4">

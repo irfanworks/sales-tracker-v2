@@ -74,3 +74,15 @@ export interface ProjectInsert {
   prospect: ProspectOption;
   weekly_update?: string | null;
 }
+
+export interface BdWeeklyUpdate {
+  id: string;
+  user_id: string;
+  year: number;
+  week_number: number;
+  customer_id: string | null;
+  content: string | null;
+  created_at?: string;
+  updated_at?: string;
+  customer?: { id: string; name: string } | null;
+}
