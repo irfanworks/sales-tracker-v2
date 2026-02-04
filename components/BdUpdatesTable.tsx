@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import { BdUpdateForm } from "./BdUpdateForm";
 import { formatWeekLabel } from "@/lib/utils/weekDates";
 import type { BdWeeklyUpdate } from "@/lib/types/database";
@@ -27,11 +29,59 @@ export function BdUpdatesTable({
   userId: string;
   customers: { id: string; name: string }[];
 }) {
+  const router = useRouter();
   const [selectedWeek, setSelectedWeek] = useState<number>(weekOptions[0] ?? 53);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const weekUpdates = updates.filter((u) => u.week_number === selectedWeek);
+  const allSelected = weekUpdates.length > 0 && selectedIds.size === weekUpdates.length;
+  const someSelected = selectedIds.size > 0;
+
+  function toggleSelectAll() {
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(weekUpdates.map((u) => u.id)));
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleDelete(id: string) {
+    setError(null);
+    setDeletingId(id);
+    const supabase = createClient();
+    const { error: deleteError } = await supabase.from("bd_weekly_updates").delete().eq("id", id);
+    setDeletingId(null);
+    if (deleteError) setError(deleteError.message);
+    else router.refresh();
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    setError(null);
+    setBulkDeleting(true);
+    const supabase = createClient();
+    const { error: deleteError } = await supabase
+      .from("bd_weekly_updates")
+      .delete()
+      .in("id", Array.from(selectedIds));
+    setBulkDeleting(false);
+    if (deleteError) setError(deleteError.message);
+    else {
+      setSelectedIds(new Set());
+      router.refresh();
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -44,6 +94,7 @@ export function BdUpdatesTable({
               setSelectedWeek(Number(e.target.value));
               setEditingId(null);
               setAddingNew(false);
+              setSelectedIds(new Set());
             }}
             className="input-field"
           >
@@ -68,9 +119,36 @@ export function BdUpdatesTable({
 
       {(addingNew || weekUpdates.length > 0) && (
         <div className="overflow-x-auto">
+          {error && (
+            <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          {someSelected && (
+            <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2">
+              <span className="text-sm text-slate-600">{selectedIds.size} dipilih</span>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                className="btn-secondary gap-2 text-red-700 hover:bg-red-50 hover:text-red-800"
+              >
+                {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Hapus yang dipilih
+              </button>
+            </div>
+          )}
           <table className="w-full min-w-[600px] text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80">
+                <th className="w-10 px-2 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    className="rounded border-slate-300"
+                  />
+                </th>
                 <th className="px-4 py-3 font-medium text-slate-700 w-48">Week</th>
                 <th className="px-4 py-3 font-medium text-slate-700 w-48">Customer</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Deskripsi Update</th>
@@ -81,6 +159,7 @@ export function BdUpdatesTable({
             <tbody>
               {addingNew && (
                 <tr className="border-b border-slate-100 bg-slate-50/30">
+                  <td className="w-10 px-2 py-3"></td>
                   <td className="px-4 py-3 font-medium text-slate-800">
                     {formatWeekLabel(BD_YEAR, selectedWeek)}
                   </td>
@@ -101,6 +180,16 @@ export function BdUpdatesTable({
               )}
               {weekUpdates.map((update) => (
                 <tr key={update.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                  <td className="w-10 px-2 py-3">
+                    {editingId !== update.id && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(update.id)}
+                        onChange={() => toggleSelect(update.id)}
+                        className="rounded border-slate-300"
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-medium text-slate-800">
                     {formatWeekLabel(BD_YEAR, update.week_number)}
                   </td>
@@ -143,14 +232,25 @@ export function BdUpdatesTable({
                         {formatSubmitTime(update)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(update.id)}
-                          className="inline-flex items-center gap-1 rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                          title="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(update.id)}
+                            className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(update.id)}
+                            disabled={deletingId === update.id}
+                            className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                            title="Delete"
+                          >
+                            {deletingId === update.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          </button>
+                        </div>
                       </td>
                     </>
                   )}

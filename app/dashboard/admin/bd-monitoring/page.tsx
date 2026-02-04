@@ -1,9 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { BdMonitoringTable } from "@/components/BdMonitoringTable";
+import { BdMonitoringFilters } from "@/components/BdMonitoringFilters";
 import { BarChart3 } from "lucide-react";
 
-export default async function BdMonitoringPage() {
+export default async function BdMonitoringPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week_from?: string; week_to?: string }>;
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -18,7 +23,11 @@ export default async function BdMonitoringPage() {
     redirect("/dashboard");
   }
 
-  const { data: updates } = await supabase
+  const params = await searchParams;
+  const weekFrom = params.week_from ? parseInt(params.week_from, 10) : null;
+  const weekTo = params.week_to ? parseInt(params.week_to, 10) : null;
+
+  let query = supabase
     .from("bd_weekly_updates")
     .select(`
       id,
@@ -31,8 +40,12 @@ export default async function BdMonitoringPage() {
       updated_at,
       customers ( id, name )
     `)
-    .eq("year", 2026)
-    .order("week_number", { ascending: false });
+    .eq("year", 2026);
+
+  if (weekFrom != null && !isNaN(weekFrom)) query = query.gte("week_number", weekFrom);
+  if (weekTo != null && !isNaN(weekTo)) query = query.lte("week_number", weekTo);
+
+  const { data: updates } = await query.order("week_number", { ascending: false });
 
   const userIds = [...new Set((updates ?? []).map((u) => u.user_id))];
   const { data: salesProfiles } = userIds.length > 0
@@ -57,6 +70,7 @@ export default async function BdMonitoringPage() {
           Pantau weekly BD activity seluruh sales.
         </p>
       </div>
+      <BdMonitoringFilters weekFrom={params.week_from} weekTo={params.week_to} />
       <div className="card overflow-hidden">
         <BdMonitoringTable
           updates={updates ?? []}

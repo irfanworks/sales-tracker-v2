@@ -45,10 +45,10 @@ export default async function ProjectsListPage({
   if (salesIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, full_name")
+      .select("id, display_name, full_name")
       .in("id", salesIds);
-    (profiles ?? []).forEach((p: { id: string; full_name: string | null }) => {
-      salesNames[p.id] = p.full_name ?? "";
+    (profiles ?? []).forEach((p: { id: string; display_name: string | null; full_name: string | null }) => {
+      salesNames[p.id] = p.display_name ?? p.full_name ?? "";
     });
   }
   const projectsWithSales = projects.map((p: Record<string, unknown>) => ({
