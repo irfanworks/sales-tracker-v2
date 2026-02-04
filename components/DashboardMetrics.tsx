@@ -29,7 +29,7 @@ export function DashboardMetrics({
       maximumFractionDigits: 0,
     }).format(n);
 
-  // Angka satu baris, ukuran font kecil agar nilai panjang (Rp xxx.xxx.xxx.xxx) muat di card tanpa wrap
+  // Single-line value, small font so long values (Rp xxx.xxx.xxx.xxx) fit in card without wrap
   const valueFontClass =
     "mt-2 min-w-0 font-bold leading-tight text-slate-900 whitespace-nowrap overflow-x-auto " +
     "text-[clamp(0.6875rem,1.2vw+0.4rem,1.125rem)]";
@@ -45,7 +45,7 @@ export function DashboardMetrics({
           <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-sm font-medium uppercase tracking-wide text-slate-600">Total Value Project</p>
             <p className={valueFontClass}>{formatCurrency(totalValueProject)}</p>
-            <p className="mt-1 text-xs text-slate-500">semua proyek, tanpa Lose</p>
+            <p className="mt-1 text-xs text-slate-500">all projects, excluding Lose</p>
           </div>
         </div>
         <div className="card flex items-start gap-5 p-6 ring-2 ring-cyan-200/60 bg-cyan-50/30">
@@ -55,7 +55,7 @@ export function DashboardMetrics({
           <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-sm font-medium uppercase tracking-wide text-slate-600">Total Value Win</p>
             <p className={valueFontClass}>{formatCurrency(totalValueWin)}</p>
-            <p className="mt-1 text-xs text-slate-500">nilai proyek Win</p>
+            <p className="mt-1 text-xs text-slate-500">value of Win projects</p>
           </div>
         </div>
         <div className="card flex items-start gap-5 p-6 ring-2 ring-emerald-200/60 bg-emerald-50/30">
@@ -65,7 +65,7 @@ export function DashboardMetrics({
           <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-sm font-medium uppercase tracking-wide text-slate-600">Total Value Hot Leads</p>
             <p className={valueFontClass}>{formatCurrency(totalValueHotLeads)}</p>
-            <p className="mt-1 text-xs text-slate-500">nilai Hot Prospect, tanpa Lose</p>
+            <p className="mt-1 text-xs text-slate-500">value of Hot Prospects, excluding Lose</p>
           </div>
         </div>
       </div>

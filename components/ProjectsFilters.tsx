@@ -21,7 +21,7 @@ export function ProjectsFilters({
   prospect?: string;
   salesId?: string;
   salesOptions: SalesOption[];
-  /** Hanya Admin yang bisa filter by Sales; role Sales tidak perlu (hanya lihat project sendiri) */
+  /** Only Admin can filter by Sales; Sales role sees only their own projects */
   showSalesFilter?: boolean;
   basePath?: string;
 }) {

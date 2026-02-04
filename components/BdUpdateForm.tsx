@@ -37,7 +37,7 @@ export function BdUpdateForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedCustomerId.trim()) {
-      setError("Pilih customer terlebih dahulu.");
+      setError("Please select a customer first.");
       return;
     }
     setError(null);
@@ -88,7 +88,7 @@ export function BdUpdateForm({
           required
           disabled={loading}
         >
-          <option value="">— Pilih customer —</option>
+          <option value="">— Select customer —</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -97,12 +97,12 @@ export function BdUpdateForm({
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">Deskripsi Update</label>
+        <label className="mb-1 block text-sm font-medium text-slate-700">Update Description</label>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           className="input-field min-h-[100px] w-full resize-y"
-          placeholder="Tulis aktivitas BD dalam bentuk poin-poin narasi..."
+          placeholder="Write BD activities in narrative bullet points..."
           rows={4}
           disabled={loading}
         />
@@ -111,10 +111,10 @@ export function BdUpdateForm({
       <div className="flex gap-2">
         <button type="submit" className="btn-primary gap-2" disabled={loading}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          Simpan
+          Save
         </button>
         <button type="button" onClick={onClose} className="btn-secondary">
-          Batal
+          Cancel
         </button>
       </div>
     </form>

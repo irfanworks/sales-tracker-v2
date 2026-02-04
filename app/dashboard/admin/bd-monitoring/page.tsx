@@ -7,7 +7,7 @@ import { BarChart3 } from "lucide-react";
 export default async function BdMonitoringPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week_from?: string; week_to?: string }>;
+  searchParams: Promise<{ week_from?: string; week_to?: string; sales_id?: string; customer_id?: string }>;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -44,6 +44,8 @@ export default async function BdMonitoringPage({
 
   if (weekFrom != null && !isNaN(weekFrom)) query = query.gte("week_number", weekFrom);
   if (weekTo != null && !isNaN(weekTo)) query = query.lte("week_number", weekTo);
+  if (params.sales_id) query = query.eq("user_id", params.sales_id);
+  if (params.customer_id) query = query.eq("customer_id", params.customer_id);
 
   const { data: updates } = await query.order("week_number", { ascending: false });
 
@@ -59,6 +61,25 @@ export default async function BdMonitoringPage({
     salesNames[p.id] = p.display_name ?? p.full_name ?? p.id.slice(0, 8);
   });
 
+  const { data: allSales } = await supabase
+    .from("profiles")
+    .select("id, display_name, full_name")
+    .in("role", ["admin", "sales"])
+    .order("display_name");
+  const salesOptions = (allSales ?? []).map((p: { id: string; display_name: string | null; full_name: string | null }) => ({
+    id: p.id,
+    name: p.display_name ?? p.full_name ?? p.id.slice(0, 8),
+  }));
+
+  const { data: allCustomers } = await supabase
+    .from("customers")
+    .select("id, name")
+    .order("name");
+  const customerOptions = (allCustomers ?? []).map((c: { id: string; name: string }) => ({
+    id: c.id,
+    name: c.name,
+  }));
+
   return (
     <div className="space-y-6">
       <div>
@@ -67,10 +88,17 @@ export default async function BdMonitoringPage({
           BD Monitoring
         </h1>
         <p className="mt-1 text-slate-600">
-          Pantau weekly BD activity seluruh sales.
+          Monitor weekly BD activity for all sales.
         </p>
       </div>
-      <BdMonitoringFilters weekFrom={params.week_from} weekTo={params.week_to} />
+      <BdMonitoringFilters
+        weekFrom={params.week_from}
+        weekTo={params.week_to}
+        salesId={params.sales_id}
+        customerId={params.customer_id}
+        salesOptions={salesOptions}
+        customerOptions={customerOptions}
+      />
       <div className="card overflow-hidden">
         <BdMonitoringTable
           updates={updates ?? []}

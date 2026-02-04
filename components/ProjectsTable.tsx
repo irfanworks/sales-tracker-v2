@@ -95,7 +95,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
       )}
       {someSelected && (
         <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2">
-          <span className="text-sm text-slate-600">{selectedIds.size} dipilih</span>
+          <span className="text-sm text-slate-600">{selectedIds.size} selected</span>
           <button
             type="button"
             onClick={handleBulkDelete}
@@ -103,7 +103,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
             className="btn-secondary gap-2 text-red-700 hover:bg-red-50 hover:text-red-800"
           >
             {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            Hapus yang dipilih
+            Delete selected
           </button>
         </div>
       )}

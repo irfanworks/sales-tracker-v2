@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Pencil, Plus, Trash2, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -38,13 +38,17 @@ export function BdUpdatesTable({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const weekUpdates = updates.filter((u) => u.week_number === selectedWeek);
-  const allSelected = weekUpdates.length > 0 && selectedIds.size === weekUpdates.length;
+  const sortedUpdates = useMemo(
+    () => [...updates].sort((a, b) => b.week_number - a.week_number),
+    [updates]
+  );
+
+  const allSelected = sortedUpdates.length > 0 && selectedIds.size === sortedUpdates.length;
   const someSelected = selectedIds.size > 0;
 
   function toggleSelectAll() {
     if (allSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(weekUpdates.map((u) => u.id)));
+    else setSelectedIds(new Set(sortedUpdates.map((u) => u.id)));
   }
 
   function toggleSelect(id: string) {
@@ -86,38 +90,37 @@ export function BdUpdatesTable({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-4">
-        <div className="min-w-[200px]">
-          <label className="mb-1 block text-xs font-medium text-slate-500">Pilih Week</label>
-          <select
-            value={selectedWeek}
-            onChange={(e) => {
-              setSelectedWeek(Number(e.target.value));
-              setEditingId(null);
-              setAddingNew(false);
-              setSelectedIds(new Set());
-            }}
-            className="input-field"
-          >
-            {weekOptions.map((w) => (
-              <option key={w} value={w}>
-                {formatWeekLabel(BD_YEAR, w)}
-              </option>
-            ))}
-          </select>
-        </div>
         {!addingNew && (
           <button
             type="button"
             onClick={() => setAddingNew(true)}
-            className="btn-primary mt-6 gap-2"
+            className="btn-primary gap-2"
           >
             <Plus className="h-4 w-4" />
-            Tambah BD Update
+            Add BD Update
           </button>
+        )}
+        {addingNew && (
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="min-w-[200px]">
+              <label className="mb-1 block text-xs font-medium text-slate-500">Select Week</label>
+              <select
+                value={selectedWeek}
+                onChange={(e) => setSelectedWeek(Number(e.target.value))}
+                className="input-field"
+              >
+                {weekOptions.map((w) => (
+                  <option key={w} value={w}>
+                    {formatWeekLabel(BD_YEAR, w)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         )}
       </div>
 
-      {(addingNew || weekUpdates.length > 0) && (
+      {(addingNew || sortedUpdates.length > 0) && (
         <div className="overflow-x-auto">
           {error && (
             <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
@@ -126,7 +129,7 @@ export function BdUpdatesTable({
           )}
           {someSelected && (
             <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2">
-              <span className="text-sm text-slate-600">{selectedIds.size} dipilih</span>
+              <span className="text-sm text-slate-600">{selectedIds.size} selected</span>
               <button
                 type="button"
                 onClick={handleBulkDelete}
@@ -134,7 +137,7 @@ export function BdUpdatesTable({
                 className="btn-secondary gap-2 text-red-700 hover:bg-red-50 hover:text-red-800"
               >
                 {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                Hapus yang dipilih
+                Delete selected
               </button>
             </div>
           )}
@@ -151,8 +154,8 @@ export function BdUpdatesTable({
                 </th>
                 <th className="px-4 py-3 font-medium text-slate-700 w-48">Week</th>
                 <th className="px-4 py-3 font-medium text-slate-700 w-48">Customer</th>
-                <th className="px-4 py-3 font-medium text-slate-700">Deskripsi Update</th>
-                <th className="px-4 py-3 font-medium text-slate-700 w-40">Tanggal Update</th>
+                <th className="px-4 py-3 font-medium text-slate-700">Update Description</th>
+                <th className="px-4 py-3 font-medium text-slate-700 w-40">Update Date</th>
                 <th className="px-4 py-3 font-medium text-slate-700 w-24 text-right">Action</th>
               </tr>
             </thead>
@@ -178,7 +181,7 @@ export function BdUpdatesTable({
                   </td>
                 </tr>
               )}
-              {weekUpdates.map((update) => (
+              {sortedUpdates.map((update) => (
                 <tr key={update.id} className="border-b border-slate-100 hover:bg-slate-50/50">
                   <td className="w-10 px-2 py-3">
                     {editingId !== update.id && (
@@ -218,12 +221,12 @@ export function BdUpdatesTable({
                             {update.content?.trim() ? (
                               update.content
                             ) : (
-                              <span className="text-slate-400 italic">Belum diisi</span>
+                              <span className="text-slate-400 italic">Not filled</span>
                             )}
                           </div>
                           {formatSubmitTime(update) && (
                             <p className="mt-1.5 text-xs text-slate-500">
-                              Terakhir update: {formatSubmitTime(update)}
+                              Last updated: {formatSubmitTime(update)}
                             </p>
                           )}
                         </div>
@@ -261,9 +264,9 @@ export function BdUpdatesTable({
         </div>
       )}
 
-      {!addingNew && weekUpdates.length === 0 && (
+      {!addingNew && sortedUpdates.length === 0 && (
         <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-8 text-center text-slate-500">
-          Belum ada BD update untuk week ini. Klik &quot;Tambah BD Update&quot; untuk menambah.
+          No BD updates yet. Click &quot;Add BD Update&quot; to add.
         </div>
       )}
     </div>

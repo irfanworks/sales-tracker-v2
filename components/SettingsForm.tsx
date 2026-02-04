@@ -49,14 +49,14 @@ export function SettingsForm({
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           className="input-field"
-          placeholder="Nama yang tampil di Dashboard"
+          placeholder="Name displayed on Dashboard"
         />
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {success && <p className="text-sm text-green-600">Display name berhasil disimpan.</p>}
+      {success && <p className="text-sm text-green-600">Display name saved successfully.</p>}
       <button type="submit" className="btn-primary gap-2" disabled={loading}>
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-        Simpan Display Name
+        Save Display Name
       </button>
     </form>
   );

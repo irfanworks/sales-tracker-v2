@@ -18,11 +18,11 @@ export function ChangePasswordForm() {
     setError(null);
     setSuccess(false);
     if (newPassword.length < 6) {
-      setError("Password minimal 6 karakter.");
+      setError("Password must be at least 6 characters.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Password dan konfirmasi tidak sama.");
+      setError("Password and confirmation do not match.");
       return;
     }
     setLoading(true);
@@ -43,7 +43,7 @@ export function ChangePasswordForm() {
     <form onSubmit={handleSubmit} className="max-w-md space-y-4">
       <div>
         <label htmlFor="new-password" className="mb-1 block text-sm font-medium text-slate-700">
-          Password baru
+          New password
         </label>
         <input
           id="new-password"
@@ -58,7 +58,7 @@ export function ChangePasswordForm() {
       </div>
       <div>
         <label htmlFor="confirm-password" className="mb-1 block text-sm font-medium text-slate-700">
-          Konfirmasi password
+          Confirm password
         </label>
         <input
           id="confirm-password"
@@ -72,10 +72,10 @@ export function ChangePasswordForm() {
         />
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {success && <p className="text-sm text-green-600">Password berhasil diubah.</p>}
+      {success && <p className="text-sm text-green-600">Password changed successfully.</p>}
       <button type="submit" className="btn-primary gap-2" disabled={loading}>
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-        Ganti Password
+        Change Password
       </button>
     </form>
   );

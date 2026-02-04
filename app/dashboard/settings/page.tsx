@@ -33,7 +33,7 @@ export default async function SettingsPage() {
           Display Name
         </h2>
         <p className="mb-4 text-sm text-slate-600">
-          Nama ini ditampilkan di Dashboard (kolom Sales), Filter, dan header.
+          This name is displayed on the Dashboard (Sales column), Filter, and header.
         </p>
         <SettingsForm
           initialDisplayName={profile?.display_name ?? profile?.full_name ?? ""}
@@ -44,10 +44,10 @@ export default async function SettingsPage() {
       <div className="card p-6">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-medium text-slate-800">
           <Lock className="h-5 w-5" />
-          Ganti Password
+          Change Password
         </h2>
         <p className="mb-4 text-sm text-slate-600">
-          Masukkan password baru dan konfirmasi.
+          Enter your new password and confirmation.
         </p>
         <ChangePasswordForm />
       </div>

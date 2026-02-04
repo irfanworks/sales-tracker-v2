@@ -60,16 +60,16 @@ export default async function CustomerEditPage({
         <div className="card overflow-hidden">
           <div className="border-b border-slate-200 bg-slate-50/80 px-4 py-3 sm:px-6">
             <h2 className="text-lg font-medium text-slate-800">PIC</h2>
-            <p className="mt-0.5 text-sm text-slate-600">Person in charge (tersimpan)</p>
+            <p className="mt-0.5 text-sm text-slate-600">Person in charge (saved)</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[400px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-100/80">
-                  <th className="px-4 py-3 font-medium text-slate-700">Nama</th>
+                  <th className="px-4 py-3 font-medium text-slate-700">Name</th>
                   <th className="px-4 py-3 font-medium text-slate-700">Email</th>
-                  <th className="px-4 py-3 font-medium text-slate-700">No. HP</th>
-                  <th className="px-4 py-3 font-medium text-slate-700">Jabatan</th>
+                  <th className="px-4 py-3 font-medium text-slate-700">Phone Number</th>
+                  <th className="px-4 py-3 font-medium text-slate-700">Position</th>
                 </tr>
               </thead>
               <tbody>

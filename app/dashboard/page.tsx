@@ -66,7 +66,7 @@ export default async function DashboardPage() {
   const totalTender = projects.filter((p: { progress_type: string }) => p.progress_type === "Tender").length;
   const totalHotProspect = projects.filter((p: { prospect: string }) => p.prospect === "Hot Prospect").length;
 
-  // Total Value Project: sum value semua project kecuali Lose
+  // Total Value Project: sum value of all projects except Lose
   const totalValueProject = projects
     .filter((p: { progress_type: string }) => p.progress_type !== "Lose")
     .reduce((sum: number, p: { value: unknown }) => sum + Number(p.value ?? 0), 0);

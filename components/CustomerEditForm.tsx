@@ -154,7 +154,7 @@ export function CustomerEditForm({
                 value={pic.nama}
                 onChange={(e) => updatePic(i, "nama", e.target.value)}
                 className="input-field"
-                placeholder="Nama PIC"
+                placeholder="PIC Name"
               />
               <input
                 type="email"
@@ -168,7 +168,7 @@ export function CustomerEditForm({
                 value={pic.no_hp}
                 onChange={(e) => updatePic(i, "no_hp", e.target.value)}
                 className="input-field"
-                placeholder="No. HP"
+                placeholder="Phone Number"
               />
               <div className="flex gap-2">
                 <input
@@ -176,7 +176,7 @@ export function CustomerEditForm({
                   value={pic.jabatan}
                   onChange={(e) => updatePic(i, "jabatan", e.target.value)}
                   className="input-field"
-                  placeholder="Jabatan"
+                  placeholder="Position"
                 />
                 <button
                   type="button"

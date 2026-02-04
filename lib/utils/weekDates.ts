@@ -1,5 +1,5 @@
 /**
- * Mendapatkan rentang tanggal (Senin-Jumat) untuk week number tertentu di tahun yang diberikan.
+ * Get the date range (Monday-Friday) for a given week number in the given year.
  * Format: Week N (dd - dd MMM) atau (dd MMM - dd MMM) jika beda bulan.
  */
 export function getWeekDateRange(year: number, weekNumber: number): { start: Date; end: Date } {

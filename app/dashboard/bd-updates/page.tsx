@@ -43,7 +43,7 @@ export default async function BdUpdatesPage() {
           BD Weekly Updates
         </h1>
         <p className="mt-1 text-slate-600">
-          Update aktivitas Business Development mingguan per customer. Pilih week, customer, lalu isi deskripsi.
+          Update weekly Business Development activities per customer. Select week, customer, then fill in the description.
         </p>
       </div>
       <div className="card overflow-hidden p-4 sm:p-6">
