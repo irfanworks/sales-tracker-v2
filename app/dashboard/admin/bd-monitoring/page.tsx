@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { BdMonitoringTable } from "@/components/BdMonitoringTable";
@@ -91,14 +92,16 @@ export default async function BdMonitoringPage({
           Monitor weekly BD activity for all sales.
         </p>
       </div>
-      <BdMonitoringFilters
-        weekFrom={params.week_from}
-        weekTo={params.week_to}
-        salesId={params.sales_id}
-        customerId={params.customer_id}
-        salesOptions={salesOptions}
-        customerOptions={customerOptions}
-      />
+      <Suspense fallback={<div className="card animate-pulse p-4 h-24 bg-slate-100 rounded-xl" />}>
+        <BdMonitoringFilters
+          weekFrom={params.week_from}
+          weekTo={params.week_to}
+          salesId={params.sales_id}
+          customerId={params.customer_id}
+          salesOptions={salesOptions}
+          customerOptions={customerOptions}
+        />
+      </Suspense>
       <div className="card overflow-hidden">
         <BdMonitoringTable
           updates={updates ?? []}

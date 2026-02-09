@@ -62,3 +62,28 @@ export function exportCustomersToExcel(
   const filename = `customers-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
   downloadBlob(blob, filename);
 }
+
+export function exportBdUpdatesToExcel(
+  rows: Array<{
+    week: string;
+    sales_name: string;
+    customer_name: string;
+    content: string;
+    updated_at: string;
+  }>
+) {
+  const data = rows.map((r) => ({
+    Week: r.week,
+    Sales: r.sales_name,
+    Customer: r.customer_name,
+    "Update Description": r.content || "",
+    "Update Date": r.updated_at,
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "BD Updates");
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const filename = `bd-monitoring-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  downloadBlob(blob, filename);
+}

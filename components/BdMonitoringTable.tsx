@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2, Loader2, FileDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { formatWeekLabel } from "@/lib/utils/weekDates";
+import { exportBdUpdatesToExcel } from "@/lib/exportExcel";
 
 const BD_YEAR = 2026;
 
@@ -89,16 +90,57 @@ export function BdMonitoringTable({
     }
   }
 
+  function handleExport() {
+    const rows = updates.map((u) => {
+      const c = Array.isArray(u.customers) ? u.customers[0] : u.customers;
+      const customerName = c?.name ?? "—";
+      const ts = u.updated_at ?? u.created_at;
+      const updatedAt = ts ? format(new Date(ts), "dd MMM yyyy, HH:mm") : "—";
+      return {
+        week: formatWeekLabel(BD_YEAR, u.week_number),
+        sales_name: salesNames[u.user_id] ?? u.user_id.slice(0, 8),
+        customer_name: customerName,
+        content: u.content?.trim() ?? "",
+        updated_at: updatedAt,
+      };
+    });
+    exportBdUpdatesToExcel(rows);
+  }
+
   if (updates.length === 0) {
     return (
-      <div className="p-8 text-center text-slate-500">
-        No BD updates from sales yet.
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {}}
+            disabled
+            className="btn-secondary gap-2 opacity-60"
+          >
+            <FileDown className="h-4 w-4" />
+            Export to Excel
+          </button>
+        </div>
+        <div className="p-8 text-center text-slate-500">
+          No BD updates from sales yet.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="space-y-0">
+      <div className="flex justify-end border-b border-slate-200 bg-slate-50/80 px-4 py-3">
+        <button
+          type="button"
+          onClick={handleExport}
+          className="btn-secondary gap-2"
+        >
+          <FileDown className="h-4 w-4" />
+          Export to Excel
+        </button>
+      </div>
+      <div className="overflow-x-auto">
       {error && (
         <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
           {error}
@@ -182,6 +224,7 @@ export function BdMonitoringTable({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

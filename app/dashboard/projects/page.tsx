@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { ProjectsTable } from "@/components/ProjectsTable";
 import { ProjectsFilters } from "@/components/ProjectsFilters";
@@ -95,14 +96,16 @@ export default async function ProjectsListPage({
         </div>
         <ExportProjectsButton projects={exportProjects} />
       </div>
-      <ProjectsFilters
-        progressType={params.progress_type}
-        prospect={params.prospect}
-        salesId={params.sales_id}
-        salesOptions={displaySalesOptions}
-        showSalesFilter={isAdmin}
-        basePath="/dashboard/projects"
-      />
+      <Suspense fallback={<div className="card animate-pulse p-4 h-24 bg-slate-100 rounded-xl" />}>
+        <ProjectsFilters
+          progressType={params.progress_type}
+          prospect={params.prospect}
+          salesId={params.sales_id}
+          salesOptions={displaySalesOptions}
+          showSalesFilter={isAdmin}
+          basePath="/dashboard/projects"
+        />
+      </Suspense>
       <div className="card overflow-hidden">
         <ProjectsTable
           projects={
