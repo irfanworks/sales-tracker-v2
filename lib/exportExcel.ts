@@ -9,31 +9,60 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function exportProjectsToExcel(
-  rows: Array<{
-    no_quote: string;
-    project_name: string;
-    customer_name: string;
-    value: number;
-    progress_type: string;
-    prospect: string;
-    sales_name: string;
-    date: string;
-  }>
-) {
-  const data = rows.map((p) => ({
-    "No Quote": p.no_quote,
-    "Project Name": p.project_name,
-    Customer: p.customer_name,
-    Value: p.value,
-    "Progress Type": p.progress_type,
-    Prospect: p.prospect,
-    Sales: p.sales_name,
-    Date: p.date,
-  }));
+export type ProjectExportRow = {
+  no_quote: string;
+  project_name: string;
+  customer_name: string;
+  value: number;
+  progress_type: string;
+  prospect: string;
+  sales_name: string;
+  date: string;
+  target_closing_at?: string | null;
+  updates?: Array<{ content: string; created_at: string }>;
+};
+
+export function exportProjectsToExcel(rows: ProjectExportRow[]) {
+  const data = rows.map((p) => {
+    const updatesText =
+      p.updates && p.updates.length > 0
+        ? p.updates
+            .map((u) => `${new Date(u.created_at).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" })}: ${u.content}`)
+            .join("\n")
+        : "";
+    return {
+      "No Quote": p.no_quote,
+      "Project Name": p.project_name,
+      Customer: p.customer_name,
+      Value: p.value,
+      "Progress Type": p.progress_type,
+      Prospect: p.prospect,
+      Sales: p.sales_name,
+      Date: p.date,
+      "Target Closing": p.target_closing_at ?? "",
+      "All Updates": updatesText,
+    };
+  });
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Projects");
+
+  const updateRows: Array<{ "No Quote": string; "Project Name": string; "Update Date": string; Content: string }> = [];
+  rows.forEach((p) => {
+    (p.updates ?? []).forEach((u) => {
+      updateRows.push({
+        "No Quote": p.no_quote,
+        "Project Name": p.project_name,
+        "Update Date": new Date(u.created_at).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" }),
+        Content: u.content,
+      });
+    });
+  });
+  if (updateRows.length > 0) {
+    const wsUpdates = XLSX.utils.json_to_sheet(updateRows);
+    XLSX.utils.book_append_sheet(wb, wsUpdates, "Project Updates");
+  }
+
   const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const filename = `projects-export-${new Date().toISOString().slice(0, 10)}.xlsx`;

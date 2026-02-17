@@ -44,6 +44,7 @@ export default async function ProjectDetailPage({
     progress_type,
     prospect,
     weekly_update,
+    target_closing_at,
     sales_id,
     customers ( id, name )
   `;
@@ -117,6 +118,7 @@ export default async function ProjectDetailPage({
               progress_type: project.progress_type,
               prospect: project.prospect,
               weekly_update: project.weekly_update,
+              target_closing_at: project.target_closing_at ?? null,
             }}
           />
         </div>
@@ -160,6 +162,14 @@ export default async function ProjectDetailPage({
                 <dt className="text-xs font-medium uppercase text-slate-500">Sales</dt>
                 <dd className="mt-1 text-slate-700">{profile?.display_name ?? profile?.full_name ?? "—"}</dd>
               </div>
+              {project.target_closing_at && (
+                <div>
+                  <dt className="text-xs font-medium uppercase text-slate-500">Target closing</dt>
+                  <dd className="mt-1 text-slate-800">
+                    {format(new Date(project.target_closing_at + "T00:00:00"), "dd MMM yyyy")}
+                  </dd>
+                </div>
+              )}
               {project.weekly_update && (
                 <div className="sm:col-span-2">
                   <dt className="text-xs font-medium uppercase text-slate-500">

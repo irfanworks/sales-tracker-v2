@@ -59,6 +59,7 @@ export interface Project {
   progress_type: ProgressType;
   prospect: ProspectOption;
   weekly_update: string | null;
+  target_closing_at?: string | null;
   sales_id: string;
   customer?: Customer;
   sales_name?: string;
@@ -73,6 +74,7 @@ export interface ProjectInsert {
   progress_type: ProgressType;
   prospect: ProspectOption;
   weekly_update?: string | null;
+  target_closing_at?: string | null;
 }
 
 export interface BdWeeklyUpdate {

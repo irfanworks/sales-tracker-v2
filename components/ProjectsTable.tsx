@@ -19,6 +19,7 @@ interface ProjectRow {
   progress_type: string;
   prospect: string;
   weekly_update: string | null;
+  target_closing_at?: string | null;
   sales_id: string;
   customer?: { id: string; name: string };
   sales_name?: string | null;
@@ -126,6 +127,7 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
             <th className="whitespace-nowrap px-3 py-3 font-medium text-slate-700 sm:px-4">Prospect</th>
             <th className="whitespace-nowrap px-3 py-3 font-medium text-slate-700 sm:px-4">Sales</th>
             <th className="whitespace-nowrap px-3 py-3 font-medium text-slate-700 sm:px-4">Date</th>
+            <th className="whitespace-nowrap px-3 py-3 font-medium text-slate-700 sm:px-4">Target closing</th>
             <th className="whitespace-nowrap px-3 py-3 font-medium text-slate-700 sm:px-4 w-24"></th>
           </tr>
         </thead>
@@ -159,6 +161,9 @@ export function ProjectsTable({ projects }: { projects: ProjectRow[] }) {
               <td className="min-w-[80px] px-3 py-3 text-slate-600 sm:px-4">{p.sales_name ?? "—"}</td>
               <td className="whitespace-nowrap px-3 py-3 text-slate-500 sm:px-4">
                 {format(new Date(p.created_at), "dd MMM yyyy")}
+              </td>
+              <td className="whitespace-nowrap px-3 py-3 text-slate-500 sm:px-4">
+                {p.target_closing_at ? format(new Date(p.target_closing_at + "T00:00:00"), "dd MMM yyyy") : "—"}
               </td>
               <td className="whitespace-nowrap px-3 py-3 sm:px-4">
                 <div className="flex items-center gap-2">

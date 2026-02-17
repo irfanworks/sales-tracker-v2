@@ -17,6 +17,7 @@ export default async function DashboardPage() {
       progress_type,
       prospect,
       weekly_update,
+      target_closing_at,
       sales_id,
       customers ( id, name )
     `)
@@ -99,6 +100,7 @@ export default async function DashboardPage() {
               progress_type: p.progress_type,
               prospect: p.prospect,
               weekly_update: p.weekly_update,
+              target_closing_at: p.target_closing_at,
               sales_id: p.sales_id,
               customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
               sales_name: p.sales_name ?? null,
@@ -112,6 +114,7 @@ export default async function DashboardPage() {
               progress_type: string;
               prospect: string;
               weekly_update: string | null;
+              target_closing_at?: string | null;
               sales_id: string;
               customer?: { id: string; name: string };
               sales_name?: string | null;

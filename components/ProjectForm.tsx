@@ -24,6 +24,7 @@ interface ProjectFormProps {
     progress_type: ProgressType;
     prospect: ProspectOption;
     weekly_update: string | null;
+    target_closing_at?: string | null;
   };
 }
 
@@ -47,6 +48,9 @@ export function ProjectForm({
     project?.prospect ?? "Normal"
   );
   const [weeklyUpdate, setWeeklyUpdate] = useState(project?.weekly_update ?? "");
+  const [targetClosingAt, setTargetClosingAt] = useState(
+    project?.target_closing_at ? project.target_closing_at.slice(0, 10) : ""
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,6 +70,7 @@ export function ProjectForm({
           progress_type: progressType,
           prospect,
           weekly_update: weeklyUpdate || null,
+          target_closing_at: targetClosingAt || null,
         })
         .eq("id", project.id);
 
@@ -92,6 +97,7 @@ export function ProjectForm({
           progress_type: progressType,
           prospect,
           weekly_update: weeklyUpdate || null,
+          target_closing_at: targetClosingAt || null,
           sales_id: user.id,
         })
         .select("id")
@@ -101,6 +107,13 @@ export function ProjectForm({
       if (insertError) {
         setError(insertError.message);
         return;
+      }
+      if (inserted?.id && weeklyUpdate.trim()) {
+        await supabase.from("project_updates").insert({
+          project_id: inserted.id,
+          content: weeklyUpdate.trim(),
+          created_by: user.id,
+        });
       }
       if (inserted?.id) {
         router.push(`/dashboard/projects/${inserted.id}`);
@@ -191,21 +204,36 @@ export function ProjectForm({
           </select>
         </div>
       </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
-          Prospect
-        </label>
-        <select
-          value={prospect}
-          onChange={(e) => setProspect(e.target.value as ProspectOption)}
-          className="input-field max-w-xs"
-        >
-          {prospectOptions.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            Prospect
+          </label>
+          <select
+            value={prospect}
+            onChange={(e) => setProspect(e.target.value as ProspectOption)}
+            className="input-field"
+          >
+            {prospectOptions.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            Target closing date
+          </label>
+          <input
+            type="date"
+            value={targetClosingAt}
+            onChange={(e) => setTargetClosingAt(e.target.value)}
+            className="input-field w-full min-w-0"
+            aria-label="Target closing date"
+          />
+          <p className="mt-1 text-xs text-slate-500">Can be updated over time</p>
+        </div>
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700">

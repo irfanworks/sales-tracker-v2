@@ -13,7 +13,9 @@ interface ProjectRow {
   progress_type: string;
   prospect: string;
   sales_name?: string | null;
+  target_closing_at?: string | null;
   customer?: { id: string; name: string };
+  updates?: Array<{ content: string; created_at: string }>;
 }
 
 export function ExportProjectsButton({ projects }: { projects: ProjectRow[] }) {
@@ -27,6 +29,8 @@ export function ExportProjectsButton({ projects }: { projects: ProjectRow[] }) {
       prospect: p.prospect,
       sales_name: p.sales_name ?? "",
       date: format(new Date(p.created_at), "dd MMM yyyy"),
+      target_closing_at: p.target_closing_at ?? null,
+      updates: p.updates ?? [],
     }));
     exportProjectsToExcel(rows);
   }

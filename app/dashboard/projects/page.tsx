@@ -30,6 +30,7 @@ export default async function ProjectsListPage({
       progress_type,
       prospect,
       weekly_update,
+      target_closing_at,
       sales_id,
       customers ( id, name )
     `)
@@ -41,6 +42,20 @@ export default async function ProjectsListPage({
 
   const { data: projectsRaw, error } = await query;
   const projects = projectsRaw ?? [];
+  const projectIds = projects.map((p: { id: string }) => p.id);
+  const { data: allUpdates } =
+    projectIds.length > 0
+      ? await supabase
+          .from("project_updates")
+          .select("id, project_id, content, created_at")
+          .in("project_id", projectIds)
+          .order("created_at", { ascending: true })
+      : { data: [] };
+  const updatesByProject: Record<string, Array<{ content: string; created_at: string }>> = {};
+  (allUpdates ?? []).forEach((u: { project_id: string; content: string; created_at: string }) => {
+    if (!updatesByProject[u.project_id]) updatesByProject[u.project_id] = [];
+    updatesByProject[u.project_id].push({ content: u.content, created_at: u.created_at });
+  });
   const salesIds = [...new Set(projects.map((p: { sales_id: string }) => p.sales_id))];
   const salesNames: Record<string, string> = {};
   if (salesIds.length > 0) {
@@ -84,7 +99,9 @@ export default async function ProjectsListPage({
     progress_type: p.progress_type as string,
     prospect: p.prospect as string,
     sales_name: (p.sales_name ?? null) as string | null,
+    target_closing_at: (p.target_closing_at as string | null) ?? null,
     customer: (Array.isArray(p.customers) ? p.customers[0] : p.customers) as { id: string; name: string } | undefined,
+    updates: (updatesByProject[p.id as string] ?? []) as Array<{ content: string; created_at: string }>,
   }));
 
   return (
@@ -119,6 +136,7 @@ export default async function ProjectsListPage({
               progress_type: p.progress_type,
               prospect: p.prospect,
               weekly_update: p.weekly_update,
+              target_closing_at: p.target_closing_at,
               sales_id: p.sales_id,
               customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
               sales_name: p.sales_name ?? null,
@@ -132,6 +150,7 @@ export default async function ProjectsListPage({
               progress_type: string;
               prospect: string;
               weekly_update: string | null;
+              target_closing_at?: string | null;
               sales_id: string;
               customer?: { id: string; name: string };
               sales_name?: string | null;
