@@ -4,6 +4,11 @@ import { DashboardMetrics } from "@/components/DashboardMetrics";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
+  const { data: currencyRates } = await supabase
+    .from("currency_rates")
+    .select("usd_per_idr, sgd_per_idr")
+    .eq("id", 1)
+    .maybeSingle();
 
   const { data: projectsRaw, error } = await supabase
     .from("projects")
@@ -86,6 +91,8 @@ export default async function DashboardPage() {
         totalBudgetary={totalBudgetary}
         totalTender={totalTender}
         totalHotProspect={totalHotProspect}
+        usdPerIdr={Number(currencyRates?.usd_per_idr ?? 0.000065)}
+        sgdPerIdr={Number(currencyRates?.sgd_per_idr ?? 0.000086)}
       />
       <div className="card overflow-hidden">
         <ProjectsTable

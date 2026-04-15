@@ -7,7 +7,13 @@ import { ExportProjectsButton } from "@/components/ExportProjectsButton";
 export default async function ProjectsListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ progress_type?: string; prospect?: string; sales_id?: string }>;
+  searchParams: Promise<{
+    progress_type?: string;
+    prospect?: string;
+    sales_id?: string;
+    sort_by?: string;
+    sort_order?: string;
+  }>;
 }) {
   const supabase = await createClient();
   const params = await searchParams;
@@ -17,6 +23,10 @@ export default async function ProjectsListPage({
     ? await supabase.from("profiles").select("role").eq("id", user.id).single()
     : { data: null };
   const isAdmin = profile?.role === "admin";
+
+  const sortBy = params.sort_by === "target_closing" ? "target_closing" : "date";
+  const sortOrder = params.sort_order === "asc" ? "asc" : "desc";
+  const isAscending = sortOrder === "asc";
 
   let query = supabase
     .from("projects")
@@ -33,12 +43,16 @@ export default async function ProjectsListPage({
       target_closing_at,
       sales_id,
       customers ( id, name )
-    `)
-    .order("created_at", { ascending: false });
+    `);
 
   if (params.progress_type) query = query.eq("progress_type", params.progress_type);
   if (params.prospect) query = query.eq("prospect", params.prospect);
   if (params.sales_id) query = query.eq("sales_id", params.sales_id);
+  if (sortBy === "target_closing") {
+    query = query.order("target_closing_at", { ascending: isAscending, nullsFirst: false });
+  } else {
+    query = query.order("created_at", { ascending: isAscending });
+  }
 
   const { data: projectsRaw, error } = await query;
   const projects = projectsRaw ?? [];
@@ -118,6 +132,8 @@ export default async function ProjectsListPage({
           progressType={params.progress_type}
           prospect={params.prospect}
           salesId={params.sales_id}
+          sortBy={params.sort_by}
+          sortOrder={params.sort_order}
           salesOptions={displaySalesOptions}
           showSalesFilter={isAdmin}
           basePath="/dashboard/projects"

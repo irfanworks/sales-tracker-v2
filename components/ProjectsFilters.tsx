@@ -13,6 +13,8 @@ export function ProjectsFilters({
   progressType,
   prospect,
   salesId,
+  sortBy,
+  sortOrder,
   salesOptions,
   showSalesFilter = true,
   basePath = "/dashboard",
@@ -20,6 +22,8 @@ export function ProjectsFilters({
   progressType?: string;
   prospect?: string;
   salesId?: string;
+  sortBy?: string;
+  sortOrder?: string;
   salesOptions: SalesOption[];
   /** Only Admin can filter by Sales; Sales role sees only their own projects */
   showSalesFilter?: boolean;
@@ -94,7 +98,33 @@ export function ProjectsFilters({
           </select>
         </div>
       )}
-      {(progressType || prospect || salesId) && (
+      <div className="w-full min-w-0 sm:w-auto">
+        <label className="mb-1 block text-xs font-medium text-slate-500">
+          Sort By
+        </label>
+        <select
+          value={sortBy ?? "date"}
+          onChange={(e) => updateFilter("sort_by", e.target.value)}
+          className="input-field w-full min-w-0 sm:min-w-[150px]"
+        >
+          <option value="date">Date</option>
+          <option value="target_closing">Target closing</option>
+        </select>
+      </div>
+      <div className="w-full min-w-0 sm:w-auto">
+        <label className="mb-1 block text-xs font-medium text-slate-500">
+          Order
+        </label>
+        <select
+          value={sortOrder ?? "desc"}
+          onChange={(e) => updateFilter("sort_order", e.target.value)}
+          className="input-field w-full min-w-0 sm:min-w-[130px]"
+        >
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </div>
+      {(progressType || prospect || salesId || sortBy || sortOrder) && (
         <button
           type="button"
           onClick={() => router.push(basePath)}

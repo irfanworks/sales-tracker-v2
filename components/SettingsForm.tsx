@@ -8,15 +8,23 @@ import { Loader2 } from "lucide-react";
 export function SettingsForm({
   initialDisplayName,
   userId,
+  isAdmin,
+  initialUsdPerIdr,
+  initialSgdPerIdr,
 }: {
   initialDisplayName: string;
   userId: string;
+  isAdmin: boolean;
+  initialUsdPerIdr: number;
+  initialSgdPerIdr: number;
 }) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [idrPerUsd, setIdrPerUsd] = useState((initialUsdPerIdr > 0 ? 1 / initialUsdPerIdr : 0).toString());
+  const [idrPerSgd, setIdrPerSgd] = useState((initialSgdPerIdr > 0 ? 1 / initialSgdPerIdr : 0).toString());
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,11 +36,38 @@ export function SettingsForm({
       .from("profiles")
       .update({ display_name: displayName.trim() || null })
       .eq("id", userId);
-    setLoading(false);
     if (updateError) {
+      setLoading(false);
       setError(updateError.message);
       return;
     }
+
+    if (isAdmin) {
+      const idrUsd = Number(idrPerUsd);
+      const idrSgd = Number(idrPerSgd);
+      if (!Number.isFinite(idrUsd) || idrUsd <= 0 || !Number.isFinite(idrSgd) || idrSgd <= 0) {
+        setLoading(false);
+        setError("Currency rates must be valid positive numbers.");
+        return;
+      }
+      const { error: ratesError } = await supabase.from("currency_rates").upsert(
+        {
+          id: 1,
+          usd_per_idr: 1 / idrUsd,
+          sgd_per_idr: 1 / idrSgd,
+          updated_by: userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+      if (ratesError) {
+        setLoading(false);
+        setError(ratesError.message);
+        return;
+      }
+    }
+
+    setLoading(false);
     setSuccess(true);
     router.refresh();
   }
@@ -52,11 +87,46 @@ export function SettingsForm({
           placeholder="Name displayed on Dashboard"
         />
       </div>
+      {isAdmin && (
+        <div className="space-y-4 rounded-lg border border-slate-200 p-4">
+          <p className="text-sm font-medium text-slate-700">Currency conversion settings</p>
+          <div>
+            <label htmlFor="idr-per-usd" className="mb-1 block text-sm font-medium text-slate-700">
+              1 USD to IDR
+            </label>
+            <input
+              id="idr-per-usd"
+              type="number"
+              min="0"
+              step="0.01"
+              value={idrPerUsd}
+              onChange={(e) => setIdrPerUsd(e.target.value)}
+              className="input-field"
+              placeholder="15500"
+            />
+          </div>
+          <div>
+            <label htmlFor="idr-per-sgd" className="mb-1 block text-sm font-medium text-slate-700">
+              1 SGD to IDR
+            </label>
+            <input
+              id="idr-per-sgd"
+              type="number"
+              min="0"
+              step="0.01"
+              value={idrPerSgd}
+              onChange={(e) => setIdrPerSgd(e.target.value)}
+              className="input-field"
+              placeholder="11500"
+            />
+          </div>
+        </div>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {success && <p className="text-sm text-green-600">Display name saved successfully.</p>}
+      {success && <p className="text-sm text-green-600">Settings saved successfully.</p>}
       <button type="submit" className="btn-primary gap-2" disabled={loading}>
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-        Save Display Name
+        Save Settings
       </button>
     </form>
   );

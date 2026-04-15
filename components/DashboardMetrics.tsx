@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { BarChart3, Award, TrendingUp, FileText, ClipboardList, Layers } from "lucide-react";
+
+type Currency = "IDR" | "USD" | "SGD";
 
 interface DashboardMetricsProps {
   totalValueProject: number;
@@ -10,6 +13,8 @@ interface DashboardMetricsProps {
   totalBudgetary: number;
   totalTender: number;
   totalHotProspect: number;
+  usdPerIdr: number;
+  sgdPerIdr: number;
 }
 
 export function DashboardMetrics({
@@ -20,11 +25,21 @@ export function DashboardMetrics({
   totalBudgetary,
   totalTender,
   totalHotProspect,
+  usdPerIdr,
+  sgdPerIdr,
 }: DashboardMetricsProps) {
+  const [currency, setCurrency] = useState<Currency>("IDR");
+
+  const toCurrency = (valueInIdr: number): number => {
+    if (currency === "USD") return valueInIdr * usdPerIdr;
+    if (currency === "SGD") return valueInIdr * sgdPerIdr;
+    return valueInIdr;
+  };
+
   const formatCurrency = (n: number) =>
-    new Intl.NumberFormat("id-ID", {
+    new Intl.NumberFormat(currency === "IDR" ? "id-ID" : "en-US", {
       style: "currency",
-      currency: "IDR",
+      currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(n);
@@ -36,6 +51,23 @@ export function DashboardMetrics({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-slate-700">Currency:</span>
+        {(["IDR", "USD", "SGD"] as const).map((cur) => (
+          <button
+            key={cur}
+            type="button"
+            onClick={() => setCurrency(cur)}
+            className={`rounded-md border px-3 py-1 text-sm ${
+              currency === cur
+                ? "border-cyan-700 bg-cyan-700 text-white"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {cur}
+          </button>
+        ))}
+      </div>
       {/* 3 card besar: Total Value Project, Total Value Win, Total Value Hot Leads — font responsive */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="card flex items-start gap-5 p-6 ring-2 ring-slate-200/60 bg-slate-50/30">
@@ -44,7 +76,7 @@ export function DashboardMetrics({
           </div>
           <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-sm font-medium uppercase tracking-wide text-slate-600">Total Value Project</p>
-            <p className={valueFontClass}>{formatCurrency(totalValueProject)}</p>
+            <p className={valueFontClass}>{formatCurrency(toCurrency(totalValueProject))}</p>
             <p className="mt-1 text-xs text-slate-500">all projects, excluding Lose</p>
           </div>
         </div>
@@ -54,7 +86,7 @@ export function DashboardMetrics({
           </div>
           <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-sm font-medium uppercase tracking-wide text-slate-600">Total Value Win</p>
-            <p className={valueFontClass}>{formatCurrency(totalValueWin)}</p>
+            <p className={valueFontClass}>{formatCurrency(toCurrency(totalValueWin))}</p>
             <p className="mt-1 text-xs text-slate-500">value of Win projects</p>
           </div>
         </div>
@@ -64,7 +96,7 @@ export function DashboardMetrics({
           </div>
           <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-sm font-medium uppercase tracking-wide text-slate-600">Total Value Hot Leads</p>
-            <p className={valueFontClass}>{formatCurrency(totalValueHotLeads)}</p>
+            <p className={valueFontClass}>{formatCurrency(toCurrency(totalValueHotLeads))}</p>
             <p className="mt-1 text-xs text-slate-500">value of Hot Prospects, excluding Lose</p>
           </div>
         </div>
