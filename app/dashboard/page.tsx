@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { ProjectsTable } from "@/components/ProjectsTable";
-import { DashboardMetrics } from "@/components/DashboardMetrics";
+import { SalesPerformanceCharts } from "@/components/SalesPerformanceCharts";
+import { SectorCoverageChart } from "@/components/SectorCoverageChart";
+import { SECTOR_OPTIONS } from "@/lib/types/database";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -14,19 +15,11 @@ export default async function DashboardPage() {
     .from("projects")
     .select(`
       id,
-      created_at,
-      no_quote,
-      project_name,
-      customer_id,
       value,
       progress_type,
-      prospect,
-      weekly_update,
-      target_closing_at,
       sales_id,
-      customers ( id, name )
-    `)
-    .order("created_at", { ascending: false });
+      customers ( sector )
+    `);
 
   const projects = projectsRaw ?? [];
   const salesIds = [...new Set(projects.map((p: { sales_id: string }) => p.sales_id))];
@@ -37,98 +30,77 @@ export default async function DashboardPage() {
       .select("id, display_name, full_name")
       .in("id", salesIds);
     (profiles ?? []).forEach((p: { id: string; display_name: string | null; full_name: string | null }) => {
-      salesNames[p.id] = p.display_name ?? p.full_name ?? "";
+      salesNames[p.id] = p.display_name ?? p.full_name ?? "Unknown";
     });
   }
 
   if (error) {
     return (
       <div className="card p-6">
-        <p className="text-red-600">Error loading projects: {error.message}</p>
+        <p className="text-red-600">Error loading dashboard: {error.message}</p>
       </div>
     );
   }
 
-  const projectsWithSales = projects.map((p: Record<string, unknown>) => ({
-    ...p,
-    sales_name: salesNames[(p.sales_id as string) ?? ""] ?? null,
-  }));
+  const salesValueMap = new Map<string, number>();
+  const salesQtyMap = new Map<string, number>();
+  const sectorMap = new Map<string, number>();
 
-  // Total Value Win: sum value where progress_type = Win (abaikan Lose)
-  const totalValueWin = projects
-    .filter((p: { progress_type: string }) => p.progress_type === "Win")
-    .reduce((sum: number, p: { value: unknown }) => sum + Number(p.value ?? 0), 0);
+  for (const project of projects) {
+    const salesId = (project as { sales_id: string }).sales_id;
+    const value = Number((project as { value: unknown }).value ?? 0);
+    const progressType = (project as { progress_type: string }).progress_type;
+    const customerRaw = (project as { customers: { sector?: string | null } | { sector?: string | null }[] | null })
+      .customers;
+    const customer = Array.isArray(customerRaw) ? customerRaw[0] : customerRaw;
+    const sector = customer?.sector?.trim() || "Unspecified";
 
-  // Total Value Hot Leads: sum value where prospect = Hot Prospect dan bukan Lose
-  const totalValueHotLeads = projects
-    .filter(
-      (p: { prospect: string; progress_type: string }) =>
-        p.prospect === "Hot Prospect" && p.progress_type !== "Lose"
-    )
-    .reduce((sum: number, p: { value: unknown }) => sum + Number(p.value ?? 0), 0);
+    salesQtyMap.set(salesId, (salesQtyMap.get(salesId) ?? 0) + 1);
+    if (progressType !== "Lose") {
+      salesValueMap.set(salesId, (salesValueMap.get(salesId) ?? 0) + value);
+    }
+    sectorMap.set(sector, (sectorMap.get(sector) ?? 0) + 1);
+  }
 
-  const totalProjects = projects.length;
-  const totalBudgetary = projects.filter((p: { progress_type: string }) => p.progress_type === "Budgetary").length;
-  const totalTender = projects.filter((p: { progress_type: string }) => p.progress_type === "Tender").length;
-  const totalHotProspect = projects.filter((p: { prospect: string }) => p.prospect === "Hot Prospect").length;
+  const salesValueData = [...salesValueMap.entries()]
+    .map(([salesId, value]) => ({
+      label: salesNames[salesId] ?? "Unknown",
+      value,
+    }))
+    .sort((a, b) => b.value - a.value);
 
-  // Total Value Project: sum value of all projects except Lose
-  const totalValueProject = projects
-    .filter((p: { progress_type: string }) => p.progress_type !== "Lose")
-    .reduce((sum: number, p: { value: unknown }) => sum + Number(p.value ?? 0), 0);
+  const salesQtyData = [...salesQtyMap.entries()]
+    .map(([salesId, value]) => ({
+      label: salesNames[salesId] ?? "Unknown",
+      value,
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  const sectorData = [
+    ...SECTOR_OPTIONS.map((sector) => ({
+      label: sector,
+      value: sectorMap.get(sector) ?? 0,
+    })),
+    ...[...sectorMap.entries()]
+      .filter(([sector]) => !(SECTOR_OPTIONS as readonly string[]).includes(sector))
+      .map(([label, value]) => ({ label, value })),
+  ].filter((item) => item.value > 0 || (SECTOR_OPTIONS as readonly string[]).includes(item.label));
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-800">Dashboard</h1>
-        <p className="mt-1 text-slate-600">Overview of all projects.</p>
+        <p className="mt-1 text-slate-600">Sales performance and sector coverage overview.</p>
       </div>
-      <DashboardMetrics
-        totalValueProject={totalValueProject}
-        totalValueWin={totalValueWin}
-        totalValueHotLeads={totalValueHotLeads}
-        totalProjects={totalProjects}
-        totalBudgetary={totalBudgetary}
-        totalTender={totalTender}
-        totalHotProspect={totalHotProspect}
+
+      <SalesPerformanceCharts
+        salesValueData={salesValueData}
+        salesQtyData={salesQtyData}
         usdPerIdr={Number(currencyRates?.usd_per_idr ?? 0.000065)}
         sgdPerIdr={Number(currencyRates?.sgd_per_idr ?? 0.000086)}
       />
-      <div className="card overflow-hidden">
-        <ProjectsTable
-          projects={
-            projectsWithSales.map((p: Record<string, unknown>) => ({
-              id: p.id,
-              created_at: p.created_at,
-              no_quote: p.no_quote,
-              project_name: p.project_name,
-              customer_id: p.customer_id,
-              value: Number(p.value),
-              progress_type: p.progress_type,
-              prospect: p.prospect,
-              weekly_update: p.weekly_update,
-              target_closing_at: p.target_closing_at,
-              sales_id: p.sales_id,
-              customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
-              sales_name: p.sales_name ?? null,
-            })) as Array<{
-              id: string;
-              created_at: string;
-              no_quote: string;
-              project_name: string;
-              customer_id: string;
-              value: number;
-              progress_type: string;
-              prospect: string;
-              weekly_update: string | null;
-              target_closing_at?: string | null;
-              sales_id: string;
-              customer?: { id: string; name: string };
-              sales_name?: string | null;
-            }>
-          }
-        />
-      </div>
+
+      <SectorCoverageChart sectorData={sectorData} />
     </div>
   );
 }

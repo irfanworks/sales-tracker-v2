@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { ProjectsTable } from "@/components/ProjectsTable";
 import { ProjectsFilters } from "@/components/ProjectsFilters";
 import { ExportProjectsButton } from "@/components/ExportProjectsButton";
+import { ProjectsSummaryCards } from "@/components/ProjectsSummaryCards";
+import { calcProjectValueMetrics } from "@/lib/projectMetrics";
 
 export default async function ProjectsListPage({
   searchParams,
@@ -17,6 +19,12 @@ export default async function ProjectsListPage({
 }) {
   const supabase = await createClient();
   const params = await searchParams;
+
+  const { data: currencyRates } = await supabase
+    .from("currency_rates")
+    .select("usd_per_idr, sgd_per_idr")
+    .eq("id", 1)
+    .maybeSingle();
 
   const { data: { user } } = await supabase.auth.getUser();
   const { data: profile } = user
@@ -104,6 +112,14 @@ export default async function ProjectsListPage({
     );
   }
 
+  const { totalValueProject, totalValueWin, totalValueHotProspect } = calcProjectValueMetrics(
+    projects.map((p: { value: unknown; progress_type: string; prospect: string }) => ({
+      value: Number(p.value ?? 0),
+      progress_type: p.progress_type,
+      prospect: p.prospect,
+    }))
+  );
+
   const exportProjects = projectsWithSales.map((p: Record<string, unknown>) => ({
     id: p.id as string,
     created_at: p.created_at as string,
@@ -139,6 +155,13 @@ export default async function ProjectsListPage({
           basePath="/dashboard/projects"
         />
       </Suspense>
+      <ProjectsSummaryCards
+        totalValueProject={totalValueProject}
+        totalValueWin={totalValueWin}
+        totalValueHotProspect={totalValueHotProspect}
+        usdPerIdr={Number(currencyRates?.usd_per_idr ?? 0.000065)}
+        sgdPerIdr={Number(currencyRates?.sgd_per_idr ?? 0.000086)}
+      />
       <div className="card overflow-hidden">
         <ProjectsTable
           projects={
