@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getProfile, getSupabase } from "@/lib/auth";
 import { BdMonitoringTable } from "@/components/BdMonitoringTable";
 import { BdMonitoringFilters } from "@/components/BdMonitoringFilters";
 import { BarChart3 } from "lucide-react";
@@ -10,24 +10,15 @@ export default async function BdMonitoringPage({
 }: {
   searchParams: Promise<{ week_from?: string; week_to?: string; sales_id?: string; customer_id?: string }>;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profile?.role !== "admin") {
-    redirect("/dashboard");
-  }
+  const profile = await getProfile();
+  if (!profile) redirect("/login");
+  if (profile.role !== "admin") redirect("/dashboard");
 
   const params = await searchParams;
   const weekFrom = params.week_from ? parseInt(params.week_from, 10) : null;
   const weekTo = params.week_to ? parseInt(params.week_to, 10) : null;
 
+  const supabase = await getSupabase();
   let query = supabase
     .from("bd_weekly_updates")
     .select(`
@@ -51,32 +42,25 @@ export default async function BdMonitoringPage({
   const { data: updates } = await query.order("week_number", { ascending: false });
 
   const userIds = [...new Set((updates ?? []).map((u) => u.user_id))];
-  const { data: salesProfiles } = userIds.length > 0
-    ? await supabase
-        .from("profiles")
-        .select("id, display_name, full_name, email")
-        .in("id", userIds)
-    : { data: [] };
+  const [{ data: salesProfiles }, { data: allSales }, { data: allCustomers }] = await Promise.all([
+    userIds.length > 0
+      ? supabase.from("profiles").select("id, display_name, full_name, email").in("id", userIds)
+      : Promise.resolve({ data: [] }),
+    supabase.from("profiles").select("id, display_name, full_name").in("role", ["admin", "sales"]).order("display_name"),
+    supabase.from("customers").select("id, name").order("name"),
+  ]);
+
   const salesNames: Record<string, string> = {};
-  (salesProfiles ?? []).forEach((p: { id: string; display_name: string | null; full_name: string | null }) => {
+  (salesProfiles ?? []).forEach((p) => {
     salesNames[p.id] = p.display_name ?? p.full_name ?? p.id.slice(0, 8);
   });
 
-  const { data: allSales } = await supabase
-    .from("profiles")
-    .select("id, display_name, full_name")
-    .in("role", ["admin", "sales"])
-    .order("display_name");
-  const salesOptions = (allSales ?? []).map((p: { id: string; display_name: string | null; full_name: string | null }) => ({
+  const salesOptions = (allSales ?? []).map((p) => ({
     id: p.id,
     name: p.display_name ?? p.full_name ?? p.id.slice(0, 8),
   }));
 
-  const { data: allCustomers } = await supabase
-    .from("customers")
-    .select("id, name")
-    .order("name");
-  const customerOptions = (allCustomers ?? []).map((c: { id: string; name: string }) => ({
+  const customerOptions = (allCustomers ?? []).map((c) => ({
     id: c.id,
     name: c.name,
   }));
@@ -103,10 +87,7 @@ export default async function BdMonitoringPage({
         />
       </Suspense>
       <div className="card overflow-hidden">
-        <BdMonitoringTable
-          updates={updates ?? []}
-          salesNames={salesNames}
-        />
+        <BdMonitoringTable updates={updates ?? []} salesNames={salesNames} />
       </div>
     </div>
   );

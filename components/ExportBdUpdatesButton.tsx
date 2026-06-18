@@ -1,8 +1,7 @@
 "use client";
 
-import { FileDown } from "lucide-react";
-import { exportBdUpdatesToExcel } from "@/lib/exportExcel";
-import { format } from "date-fns";
+import { useState } from "react";
+import { FileDown, Loader2 } from "lucide-react";
 import { formatWeekLabel } from "@/lib/utils/weekDates";
 
 const BD_YEAR = 2026;
@@ -26,8 +25,16 @@ export function ExportBdUpdatesButton({
   updates: BdUpdate[];
   salesNames: Record<string, string>;
 }) {
-  function handleExport() {
-    const rows = updates.map((u) => {
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const [{ exportBdUpdatesToExcel }, { format }] = await Promise.all([
+        import("@/lib/exportExcel"),
+        import("date-fns"),
+      ]);
+      const rows = updates.map((u) => {
       const c = Array.isArray(u.customers) ? u.customers[0] : u.customers;
       const customerName = c?.name ?? "—";
       const ts = u.updated_at ?? u.created_at;
@@ -41,6 +48,9 @@ export function ExportBdUpdatesButton({
       };
     });
     exportBdUpdatesToExcel(rows);
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -48,9 +58,9 @@ export function ExportBdUpdatesButton({
       type="button"
       onClick={handleExport}
       className="btn-secondary gap-2"
-      disabled={updates.length === 0}
+      disabled={updates.length === 0 || exporting}
     >
-      <FileDown className="h-4 w-4" />
+      {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
       Export to Excel
     </button>
   );

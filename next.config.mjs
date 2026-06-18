@@ -2,6 +2,10 @@
 const isProduction = process.env.NODE_ENV === "production";
 
 const nextConfig = {
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns"],
+  },
+  serverExternalPackages: ["xlsx"],
   async headers() {
     const securityHeaders = [
       { key: "X-Frame-Options", value: "DENY" },

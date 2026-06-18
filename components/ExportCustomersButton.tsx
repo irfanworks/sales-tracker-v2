@@ -1,8 +1,7 @@
 "use client";
 
-import { FileDown } from "lucide-react";
-import { exportCustomersToExcel } from "@/lib/exportExcel";
-import { format } from "date-fns";
+import { useState } from "react";
+import { FileDown, Loader2 } from "lucide-react";
 
 interface CustomerRow {
   id: string;
@@ -13,14 +12,23 @@ interface CustomerRow {
 }
 
 export function ExportCustomersButton({ customers }: { customers: CustomerRow[] }) {
-  function handleExport() {
-    const rows = customers.map((c) => ({
-      name: c.name,
-      sector: c.sector ?? "",
-      created: c.created_at ? format(new Date(c.created_at), "dd MMM yyyy") : "",
-      pics_summary: (c.pics ?? []).map((p) => p.nama || p.email || "").filter(Boolean).join(", ") || "",
-    }));
-    exportCustomersToExcel(rows);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const { exportCustomersToExcel } = await import("@/lib/exportExcel");
+      const { format } = await import("date-fns");
+      const rows = customers.map((c) => ({
+        name: c.name,
+        sector: c.sector ?? "",
+        created: c.created_at ? format(new Date(c.created_at), "dd MMM yyyy") : "",
+        pics_summary: (c.pics ?? []).map((p) => p.nama || p.email || "").filter(Boolean).join(", ") || "",
+      }));
+      exportCustomersToExcel(rows);
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -28,9 +36,9 @@ export function ExportCustomersButton({ customers }: { customers: CustomerRow[] 
       type="button"
       onClick={handleExport}
       className="btn-secondary gap-2"
-      disabled={customers.length === 0}
+      disabled={customers.length === 0 || exporting}
     >
-      <FileDown className="h-4 w-4" />
+      {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
       Export to Excel
     </button>
   );

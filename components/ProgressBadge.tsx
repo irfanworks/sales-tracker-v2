@@ -1,4 +1,3 @@
-"use client";
 
 const PROGRESS_STYLES: Record<string, string> = {
   Budgetary: "bg-amber-100 text-amber-800 border-amber-200",

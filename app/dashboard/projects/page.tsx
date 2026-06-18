@@ -1,138 +1,84 @@
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { getProfile, getSalesOptions } from "@/lib/auth";
+import { getCurrencyRates } from "@/lib/currency";
+import { calcProjectValueMetrics } from "@/lib/projectMetrics";
+import {
+  PROJECTS_PAGE_SIZE,
+  buildExportSearchParams,
+  buildProjectsListQuery,
+  buildProjectsMetricsQuery,
+  parseProjectListParams,
+  type ProjectListParams,
+} from "@/lib/projectsQuery";
+import { getSupabase } from "@/lib/auth";
 import { ProjectsTable } from "@/components/ProjectsTable";
 import { ProjectsFilters } from "@/components/ProjectsFilters";
 import { ExportProjectsButton } from "@/components/ExportProjectsButton";
 import { ProjectsSummaryCards } from "@/components/ProjectsSummaryCards";
-import { calcProjectValueMetrics } from "@/lib/projectMetrics";
+import { ProjectsPagination } from "@/components/ProjectsPagination";
 
 export default async function ProjectsListPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    progress_type?: string;
-    prospect?: string;
-    sales_id?: string;
-    sort_by?: string;
-    sort_order?: string;
-  }>;
+  searchParams: Promise<ProjectListParams>;
 }) {
-  const supabase = await createClient();
   const params = await searchParams;
+  const { page } = parseProjectListParams(params);
+  const from = (page - 1) * PROJECTS_PAGE_SIZE;
+  const to = from + PROJECTS_PAGE_SIZE - 1;
 
-  const { data: currencyRates } = await supabase
-    .from("currency_rates")
-    .select("usd_per_idr, sgd_per_idr")
-    .eq("id", 1)
-    .maybeSingle();
+  const supabase = await getSupabase();
+  const [profile, currencyRates, salesOptions, listResult, metricsResult] = await Promise.all([
+    getProfile(),
+    getCurrencyRates(),
+    getSalesOptions(),
+    buildProjectsListQuery(supabase, params, { count: "exact", range: { from, to } }),
+    buildProjectsMetricsQuery(supabase, params),
+  ]);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
-    : { data: null };
   const isAdmin = profile?.role === "admin";
+  const { data: projectsRaw, error, count } = listResult;
+  const { data: metricsRows, error: metricsError } = metricsResult;
 
-  const sortBy = params.sort_by === "target_closing" ? "target_closing" : "date";
-  const sortOrder = params.sort_order === "asc" ? "asc" : "desc";
-  const isAscending = sortOrder === "asc";
-
-  let query = supabase
-    .from("projects")
-    .select(`
-      id,
-      created_at,
-      no_quote,
-      project_name,
-      customer_id,
-      value,
-      progress_type,
-      prospect,
-      weekly_update,
-      target_closing_at,
-      sales_id,
-      customers ( id, name )
-    `);
-
-  if (params.progress_type) query = query.eq("progress_type", params.progress_type);
-  if (params.prospect) query = query.eq("prospect", params.prospect);
-  if (params.sales_id) query = query.eq("sales_id", params.sales_id);
-  if (sortBy === "target_closing") {
-    query = query.order("target_closing_at", { ascending: isAscending, nullsFirst: false });
-  } else {
-    query = query.order("created_at", { ascending: isAscending });
+  if (error || metricsError) {
+    return (
+      <div className="card p-6">
+        <p className="text-red-600">
+          Error loading projects: {error?.message ?? metricsError?.message}
+        </p>
+      </div>
+    );
   }
 
-  const { data: projectsRaw, error } = await query;
   const projects = projectsRaw ?? [];
-  const projectIds = projects.map((p: { id: string }) => p.id);
-  const { data: allUpdates } =
-    projectIds.length > 0
-      ? await supabase
-          .from("project_updates")
-          .select("id, project_id, content, created_at")
-          .in("project_id", projectIds)
-          .order("created_at", { ascending: true })
-      : { data: [] };
-  const updatesByProject: Record<string, Array<{ content: string; created_at: string }>> = {};
-  (allUpdates ?? []).forEach((u: { project_id: string; content: string; created_at: string }) => {
-    if (!updatesByProject[u.project_id]) updatesByProject[u.project_id] = [];
-    updatesByProject[u.project_id].push({ content: u.content, created_at: u.created_at });
-  });
-  const salesIds = [...new Set(projects.map((p: { sales_id: string }) => p.sales_id))];
+  const salesIds = [...new Set(projects.map((p) => p.sales_id))];
   const salesNames: Record<string, string> = {};
+
   if (salesIds.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, display_name, full_name")
       .in("id", salesIds);
-    (profiles ?? []).forEach((p: { id: string; display_name: string | null; full_name: string | null }) => {
+    (profiles ?? []).forEach((p) => {
       salesNames[p.id] = p.display_name ?? p.full_name ?? "";
     });
   }
-  const projectsWithSales = projects.map((p: Record<string, unknown>) => ({
+
+  const projectsWithSales = projects.map((p) => ({
     ...p,
-    sales_name: salesNames[(p.sales_id as string) ?? ""] ?? null,
+    sales_name: salesNames[p.sales_id] ?? null,
   }));
-
-  const { data: salesOptions } = await supabase
-    .from("profiles")
-    .select("id, display_name, full_name")
-    .in("role", ["admin", "sales"])
-    .order("display_name");
-  const displaySalesOptions = (salesOptions ?? []).map((s: { id: string; display_name: string | null; full_name: string | null }) => ({
-    id: s.id,
-    display_name: s.display_name ?? s.full_name ?? s.id.slice(0, 8),
-  }));
-
-  if (error) {
-    return (
-      <div className="card p-6">
-        <p className="text-red-600">Error loading projects: {error.message}</p>
-      </div>
-    );
-  }
 
   const { totalValueProject, totalValueWin, totalValueHotProspect } = calcProjectValueMetrics(
-    projects.map((p: { value: unknown; progress_type: string; prospect: string }) => ({
+    (metricsRows ?? []).map((p) => ({
       value: Number(p.value ?? 0),
       progress_type: p.progress_type,
       prospect: p.prospect,
     }))
   );
 
-  const exportProjects = projectsWithSales.map((p: Record<string, unknown>) => ({
-    id: p.id as string,
-    created_at: p.created_at as string,
-    no_quote: p.no_quote as string,
-    project_name: p.project_name as string,
-    value: Number(p.value),
-    progress_type: p.progress_type as string,
-    prospect: p.prospect as string,
-    sales_name: (p.sales_name ?? null) as string | null,
-    target_closing_at: (p.target_closing_at as string | null) ?? null,
-    customer: (Array.isArray(p.customers) ? p.customers[0] : p.customers) as { id: string; name: string } | undefined,
-    updates: (updatesByProject[p.id as string] ?? []) as Array<{ content: string; created_at: string }>,
-  }));
+  const totalCount = count ?? 0;
+  const exportQuery = buildExportSearchParams(params);
 
   return (
     <div className="space-y-6">
@@ -141,7 +87,7 @@ export default async function ProjectsListPage({
           <h1 className="text-2xl font-semibold text-slate-800">Projects</h1>
           <p className="mt-1 text-slate-600">List of all projects.</p>
         </div>
-        <ExportProjectsButton projects={exportProjects} />
+        <ExportProjectsButton exportQuery={exportQuery} disabled={totalCount === 0} />
       </div>
       <Suspense fallback={<div className="card animate-pulse p-4 h-24 bg-slate-100 rounded-xl" />}>
         <ProjectsFilters
@@ -150,7 +96,7 @@ export default async function ProjectsListPage({
           salesId={params.sales_id}
           sortBy={params.sort_by}
           sortOrder={params.sort_order}
-          salesOptions={displaySalesOptions}
+          salesOptions={salesOptions}
           showSalesFilter={isAdmin}
           basePath="/dashboard/projects"
         />
@@ -159,42 +105,33 @@ export default async function ProjectsListPage({
         totalValueProject={totalValueProject}
         totalValueWin={totalValueWin}
         totalValueHotProspect={totalValueHotProspect}
-        usdPerIdr={Number(currencyRates?.usd_per_idr ?? 0.000065)}
-        sgdPerIdr={Number(currencyRates?.sgd_per_idr ?? 0.000086)}
+        usdPerIdr={currencyRates.usdPerIdr}
+        sgdPerIdr={currencyRates.sgdPerIdr}
       />
       <div className="card overflow-hidden">
         <ProjectsTable
-          projects={
-            projectsWithSales.map((p: Record<string, unknown>) => ({
-              id: p.id,
-              created_at: p.created_at,
-              no_quote: p.no_quote,
-              project_name: p.project_name,
-              customer_id: p.customer_id,
-              value: Number(p.value),
-              progress_type: p.progress_type,
-              prospect: p.prospect,
-              weekly_update: p.weekly_update,
-              target_closing_at: p.target_closing_at,
-              sales_id: p.sales_id,
-              customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
-              sales_name: p.sales_name ?? null,
-            })) as Array<{
-              id: string;
-              created_at: string;
-              no_quote: string;
-              project_name: string;
-              customer_id: string;
-              value: number;
-              progress_type: string;
-              prospect: string;
-              weekly_update: string | null;
-              target_closing_at?: string | null;
-              sales_id: string;
-              customer?: { id: string; name: string };
-              sales_name?: string | null;
-            }>
-          }
+          projects={projectsWithSales.map((p) => ({
+            id: p.id,
+            created_at: p.created_at,
+            no_quote: p.no_quote,
+            project_name: p.project_name,
+            customer_id: p.customer_id,
+            value: Number(p.value),
+            progress_type: p.progress_type,
+            prospect: p.prospect,
+            weekly_update: null,
+            target_closing_at: p.target_closing_at,
+            sales_id: p.sales_id,
+            customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
+            sales_name: p.sales_name ?? null,
+          }))}
+        />
+        <ProjectsPagination
+          page={page}
+          totalCount={totalCount}
+          pageSize={PROJECTS_PAGE_SIZE}
+          basePath="/dashboard/projects"
+          searchParams={params}
         />
       </div>
     </div>

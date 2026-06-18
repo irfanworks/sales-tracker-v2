@@ -1,28 +1,18 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getAuthUser, getProfile } from "@/lib/auth";
+import { getCurrencyRates } from "@/lib/currency";
 import { SettingsForm } from "@/components/SettingsForm";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { Settings, User, Lock } from "lucide-react";
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) {
     redirect("/login?redirectTo=/dashboard/settings");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, full_name, email, role")
-    .eq("id", user.id)
-    .single();
+  const [profile, currencyRates] = await Promise.all([getProfile(), getCurrencyRates()]);
   const isAdmin = profile?.role === "admin";
-
-  const { data: currencyRates } = await supabase
-    .from("currency_rates")
-    .select("usd_per_idr, sgd_per_idr")
-    .eq("id", 1)
-    .maybeSingle();
 
   return (
     <div className="space-y-8">
@@ -46,8 +36,8 @@ export default async function SettingsPage() {
           initialDisplayName={profile?.display_name ?? profile?.full_name ?? ""}
           userId={user.id}
           isAdmin={isAdmin}
-          initialUsdPerIdr={Number(currencyRates?.usd_per_idr ?? 0.000065)}
-          initialSgdPerIdr={Number(currencyRates?.sgd_per_idr ?? 0.000086)}
+          initialUsdPerIdr={currencyRates.usdPerIdr}
+          initialSgdPerIdr={currencyRates.sgdPerIdr}
         />
       </div>
 

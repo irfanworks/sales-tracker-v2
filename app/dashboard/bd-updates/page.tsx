@@ -1,34 +1,33 @@
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getAuthUser } from "@/lib/auth";
+import { getSupabase } from "@/lib/auth";
 import { BdUpdatesTable } from "@/components/BdUpdatesTable";
 import { ClipboardList } from "lucide-react";
 
 export default async function BdUpdatesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
-  const { data: updates } = await supabase
-    .from("bd_weekly_updates")
-    .select(`
-      id,
-      user_id,
-      year,
-      week_number,
-      customer_id,
-      content,
-      created_at,
-      updated_at,
-      customers ( id, name )
-    `)
-    .eq("user_id", user.id)
-    .eq("year", 2026)
-    .order("week_number", { ascending: false });
-
-  const { data: customers } = await supabase
-    .from("customers")
-    .select("id, name")
-    .order("name");
+  const supabase = await getSupabase();
+  const [{ data: updates }, { data: customers }] = await Promise.all([
+    supabase
+      .from("bd_weekly_updates")
+      .select(`
+        id,
+        user_id,
+        year,
+        week_number,
+        customer_id,
+        content,
+        created_at,
+        updated_at,
+        customers ( id, name )
+      `)
+      .eq("user_id", user.id)
+      .eq("year", 2026)
+      .order("week_number", { ascending: false }),
+    supabase.from("customers").select("id, name").order("name"),
+  ]);
 
   const normalized = (updates ?? []).map((u) => ({
     ...u,

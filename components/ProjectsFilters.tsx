@@ -36,6 +36,7 @@ export function ProjectsFilters({
     const next = new URLSearchParams(searchParams.toString());
     if (value) next.set(key, value);
     else next.delete(key);
+    if (key !== "page") next.delete("page");
     router.push(`${basePath}?${next.toString()}`);
   }
 

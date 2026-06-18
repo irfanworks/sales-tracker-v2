@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getSupabase } from "@/lib/auth";
 import { CustomersTable } from "@/components/CustomersTable";
 import { AddCustomerForm } from "@/components/AddCustomerForm";
 import { ExportCustomersButton } from "@/components/ExportCustomersButton";
@@ -6,7 +6,7 @@ import { Users } from "lucide-react";
 import type { Customer, CustomerPic } from "@/lib/types/database";
 
 export default async function CustomersPage() {
-  const supabase = await createClient();
+  const supabase = await getSupabase();
   const { data: customers, error } = await supabase
     .from("customers")
     .select(`
@@ -14,7 +14,7 @@ export default async function CustomersPage() {
       name,
       sector,
       created_at,
-      customer_pics ( id, nama, email, no_hp, jabatan )
+      customer_pics ( id, nama )
     `)
     .order("name");
 
@@ -34,13 +34,13 @@ export default async function CustomersPage() {
       sector: c.sector ?? null,
       created_at: c.created_at,
       pics: pics.map(
-        (p: { id?: string; nama: string | null; email: string | null; no_hp: string | null; jabatan: string | null }): CustomerPic => ({
+        (p: { id?: string; nama: string | null }): CustomerPic => ({
           id: p.id,
           customer_id: c.id,
           nama: p.nama,
-          email: p.email,
-          no_hp: p.no_hp,
-          jabatan: p.jabatan,
+          email: null,
+          no_hp: null,
+          jabatan: null,
         })
       ),
     };

@@ -6,7 +6,6 @@ import { Trash2, Loader2, FileDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { formatWeekLabel } from "@/lib/utils/weekDates";
-import { exportBdUpdatesToExcel } from "@/lib/exportExcel";
 
 const BD_YEAR = 2026;
 
@@ -90,7 +89,11 @@ export function BdMonitoringTable({
     }
   }
 
-  function handleExport() {
+  async function handleExport() {
+    const [{ exportBdUpdatesToExcel }, { format }] = await Promise.all([
+      import("@/lib/exportExcel"),
+      import("date-fns"),
+    ]);
     const rows = updates.map((u) => {
       const c = Array.isArray(u.customers) ? u.customers[0] : u.customers;
       const customerName = c?.name ?? "—";

@@ -1,4 +1,3 @@
-"use client";
 
 import { Building2 } from "lucide-react";
 import { BarChart } from "@/components/BarChart";
