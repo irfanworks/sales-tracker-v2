@@ -50,16 +50,10 @@ export function SettingsForm({
         setError("Currency rates must be valid positive numbers.");
         return;
       }
-      const { error: ratesError } = await supabase.from("currency_rates").upsert(
-        {
-          id: 1,
-          usd_per_idr: 1 / idrUsd,
-          sgd_per_idr: 1 / idrSgd,
-          updated_by: userId,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
+      const { error: ratesError } = await supabase.rpc("update_currency_rates", {
+        p_usd_per_idr: 1 / idrUsd,
+        p_sgd_per_idr: 1 / idrSgd,
+      });
       if (ratesError) {
         setLoading(false);
         setError(ratesError.message);
