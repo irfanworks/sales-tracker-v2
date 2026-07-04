@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { PROGRESS_TYPES, PROSPECT_OPTIONS } from "@/lib/types/database";
+import { PROJECTS_LIST_PROGRESS_TYPES, PROSPECT_OPTIONS } from "@/lib/types/database";
 import { Filter } from "lucide-react";
 
 interface SalesOption {
@@ -17,6 +17,8 @@ export function ProjectsFilters({
   sortOrder,
   salesOptions,
   showSalesFilter = true,
+  showProgressFilter = true,
+  progressTypeOptions = PROJECTS_LIST_PROGRESS_TYPES,
   basePath = "/dashboard",
 }: {
   progressType?: string;
@@ -27,6 +29,8 @@ export function ProjectsFilters({
   salesOptions: SalesOption[];
   /** Only Admin can filter by Sales; Sales role sees only their own projects */
   showSalesFilter?: boolean;
+  showProgressFilter?: boolean;
+  progressTypeOptions?: readonly string[];
   basePath?: string;
 }) {
   const router = useRouter();
@@ -41,28 +45,30 @@ export function ProjectsFilters({
   }
 
   return (
-    <div className="card flex flex-wrap items-end gap-3 p-4 sm:gap-4">
+    <div className="card-elevated flex flex-wrap items-end gap-3 p-4 sm:gap-4">
       <span className="flex w-full items-center gap-2 text-sm font-medium text-slate-700 sm:w-auto">
         <Filter className="h-4 w-4 shrink-0" />
         Filters
       </span>
-      <div className="w-full min-w-0 sm:w-auto">
-        <label className="mb-1 block text-xs font-medium text-slate-500">
-          Progress Type
-        </label>
-        <select
-          value={progressType ?? ""}
-          onChange={(e) => updateFilter("progress_type", e.target.value)}
-          className="input-field w-full min-w-0 sm:min-w-[140px]"
-        >
-          <option value="">All</option>
-          {PROGRESS_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-      </div>
+      {showProgressFilter && (
+        <div className="w-full min-w-0 sm:w-auto">
+          <label className="mb-1 block text-xs font-medium text-slate-500">
+            Progress Type
+          </label>
+          <select
+            value={progressType ?? ""}
+            onChange={(e) => updateFilter("progress_type", e.target.value)}
+            className="input-field w-full min-w-0 sm:min-w-[140px]"
+          >
+            <option value="">All</option>
+            {progressTypeOptions.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-500">
           Prospect

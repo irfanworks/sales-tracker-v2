@@ -12,9 +12,10 @@ export async function GET(request: NextRequest) {
   }
 
   const params = Object.fromEntries(request.nextUrl.searchParams.entries());
+  const scope = params.scope === "bd" ? "bd" : "projects";
   const supabase = await getSupabase();
 
-  const { data: projectsRaw, error } = await buildProjectsListQuery(supabase, params);
+  const { data: projectsRaw, error } = await buildProjectsListQuery(supabase, params, { scope });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -53,8 +54,9 @@ export async function GET(request: NextRequest) {
       no_quote: p.no_quote,
       project_name: p.project_name,
       customer_name: customer?.name ?? "",
-      value: Number(p.value),
+      value: p.value != null ? Number(p.value) : 0,
       progress_type: p.progress_type,
+      outcome_status: p.outcome_status ?? null,
       prospect: p.prospect,
       sales_name: salesNames[p.sales_id] ?? "",
       date: format(new Date(p.created_at), "dd MMM yyyy"),
@@ -64,7 +66,10 @@ export async function GET(request: NextRequest) {
   });
 
   const buffer = buildProjectsWorkbook(rows);
-  const filename = `projects-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename =
+    scope === "bd"
+      ? `bd-projects-export-${new Date().toISOString().slice(0, 10)}.xlsx`
+      : `projects-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

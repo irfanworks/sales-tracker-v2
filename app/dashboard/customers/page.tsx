@@ -2,8 +2,10 @@ import { getSupabase } from "@/lib/auth";
 import { CustomersTable } from "@/components/CustomersTable";
 import { AddCustomerForm } from "@/components/AddCustomerForm";
 import { ExportCustomersButton } from "@/components/ExportCustomersButton";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Users } from "lucide-react";
 import type { Customer, CustomerPic } from "@/lib/types/database";
+import { slugWithId } from "@/lib/slugify";
 
 export default async function CustomersPage() {
   const supabase = await getSupabase();
@@ -12,6 +14,7 @@ export default async function CustomersPage() {
     .select(`
       id,
       name,
+      slug,
       sector,
       created_at,
       customer_pics ( id, nama )
@@ -28,9 +31,11 @@ export default async function CustomersPage() {
 
   const normalized: (Customer & { pics: CustomerPic[] })[] = (customers ?? []).map((c) => {
     const pics = Array.isArray(c.customer_pics) ? c.customer_pics : [];
+    const slug = c.slug ?? slugWithId(c.name, c.id);
     return {
       id: c.id,
       name: c.name,
+      slug,
       sector: c.sector ?? null,
       created_at: c.created_at,
       pics: pics.map(
@@ -48,21 +53,24 @@ export default async function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-800">Customers</h1>
-          <p className="mt-1 text-slate-600">Master data customer. Sector & PIC optional.</p>
-        </div>
-        <ExportCustomersButton customers={normalized} />
+      <PageHeader
+        icon={Users}
+        title="Customers"
+        description="Master data customer. Sector & PIC optional."
+        actions={<ExportCustomersButton customers={normalized} />}
+      />
+      <div className="card-elevated p-5 sm:p-6">
+        <h2 className="mb-4 text-base font-bold text-slate-900 sm:text-lg">Add customer</h2>
+        <AddCustomerForm
+          existingCustomers={normalized.map((c) => ({
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+            sector: c.sector,
+          }))}
+        />
       </div>
-      <div className="card p-6">
-        <h2 className="mb-4 flex items-center gap-2 text-lg font-medium text-slate-800">
-          <Users className="h-5 w-5" />
-          Add customer
-        </h2>
-        <AddCustomerForm />
-      </div>
-      <div className="card overflow-hidden">
+      <div className="table-shell">
         <CustomersTable customers={normalized} />
       </div>
     </div>

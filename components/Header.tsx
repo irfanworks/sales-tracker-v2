@@ -30,55 +30,65 @@ export function Header({ user, profile, onMenuClick }: HeaderProps) {
     router.refresh();
   }
 
-  const displayName = profile?.display_name || profile?.full_name || profile?.email || user.email || "User";
+  const displayName =
+    profile?.display_name || profile?.full_name || profile?.email || user.email || "User";
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white shadow-sm">
-      <div className="flex h-14 items-center justify-between gap-2 px-3 sm:px-4 lg:px-8">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+    <header className="glass-header sticky top-0 z-20">
+      <div className="flex h-14 items-center justify-between gap-3 px-3 sm:h-16 sm:px-4 lg:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           {onMenuClick && (
             <button
               type="button"
               onClick={onMenuClick}
-              className="lg:hidden flex shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+              className="flex shrink-0 rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 lg:hidden"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
             </button>
           )}
-          <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
+          <Link href="/dashboard" className="flex min-w-0 shrink-0 items-center gap-2.5 sm:gap-3">
             <Image
               src="/logo.png"
               alt="Enercon Indonesia"
-              width={36}
-              height={36}
-              className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
+              width={40}
+              height={40}
+              className="h-8 w-8 object-contain sm:h-9 sm:w-9"
+              priority
             />
-            <span className="hidden truncate text-base font-semibold text-slate-800 sm:inline sm:max-w-[180px] lg:max-w-none">
-              Enercon Indonesia&apos;s Sales Tracker
-            </span>
-            <span className="truncate text-base font-semibold text-slate-800 sm:hidden">
-              Sales Tracker
-            </span>
+            <div className="min-w-0 leading-tight">
+              <span className="hidden truncate text-sm font-bold tracking-tight text-slate-900 sm:block lg:text-base">
+                Enercon Sales Tracker
+              </span>
+              <span className="truncate text-sm font-bold tracking-tight text-slate-900 sm:hidden">
+                Sales Tracker
+              </span>
+            </div>
           </Link>
         </div>
-        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-          <span className="hidden max-w-[120px] truncate text-sm text-slate-600 sm:flex sm:max-w-[180px] sm:items-center sm:gap-2 lg:max-w-none">
-            <User className="h-4 w-4 shrink-0" />
-            {displayName}
+
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="hidden items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-1.5 sm:flex">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-700 text-white">
+              <User className="h-3.5 w-3.5" />
+            </div>
+            <span className="max-w-[140px] truncate text-sm font-medium text-slate-700 lg:max-w-[200px]">
+              {displayName}
+            </span>
             {profile?.role && (
-              <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+              <span className="rounded-md bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
                 {profile.role}
               </span>
             )}
-          </span>
+          </div>
           <button
             type="button"
             onClick={handleSignOut}
-            className="btn-secondary gap-1.5 py-1.5 text-slate-600 sm:gap-2 sm:py-2"
+            className="btn-ghost gap-1.5 text-slate-600 sm:border sm:border-slate-200 sm:bg-white sm:shadow-sm sm:hover:bg-slate-50"
+            aria-label="Sign out"
           >
             <LogOut className="h-4 w-4" />
-            <span className="hidden xs:inline sm:inline">Sign out</span>
+            <span className="hidden sm:inline">Sign out</span>
           </button>
         </div>
       </div>

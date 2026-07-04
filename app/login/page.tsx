@@ -3,8 +3,10 @@
 import { useState, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LogIn, Loader2 } from "lucide-react";
+import { viewTransitionNavigate } from "@/lib/viewTransition";
+import { LogIn, Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -26,21 +28,28 @@ function LoginForm() {
       setError(signInError.message);
       return;
     }
-    router.push(redirectTo);
-    router.refresh();
+    viewTransitionNavigate(router, redirectTo, { refresh: true });
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-6">
-      <div className="card w-full max-w-md p-6 sm:p-8">
-        <div className="mb-6 flex justify-center">
-          <img src="/logo.png" alt="Enercon Indonesia" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
+    <div className="relative flex min-h-screen flex-col items-center justify-center app-shell-bg px-4 py-8">
+      <div className="card-elevated w-full max-w-md animate-slide-up p-6 sm:p-8">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <Image
+            src="/logo.png"
+            alt="Enercon Indonesia"
+            width={72}
+            height={72}
+            className="h-16 w-16 object-contain sm:h-[4.5rem] sm:w-[4.5rem]"
+            priority
+          />
+          <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">Welcome back</h1>
+          <p className="mt-1.5 text-sm text-slate-500">Sign in to your sales workspace</p>
         </div>
-        <h1 className="mb-2 text-xl font-semibold text-slate-800">Sign in</h1>
-        <p className="mb-6 text-sm text-slate-600">Use your account to login.</p>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-slate-700">
               Email
             </label>
             <input
@@ -55,7 +64,7 @@ function LoginForm() {
             />
           </div>
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-700">
               Password
             </label>
             <input
@@ -70,11 +79,11 @@ function LoginForm() {
             />
           </div>
           {error && (
-            <p className="text-sm text-red-600" role="alert">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700" role="alert">
               {error}
-            </p>
+            </div>
           )}
-          <button type="submit" className="btn-primary w-full gap-2" disabled={loading}>
+          <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -83,8 +92,13 @@ function LoginForm() {
             Sign in
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-slate-500">
-          <Link href="/" className="text-cyan-700 hover:underline">
+
+        <p className="mt-6 text-center">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-cyan-700"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
             Back to home
           </Link>
         </p>
@@ -95,10 +109,10 @@ function LoginForm() {
 
 function LoginFormFallback() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4">
-      <div className="card w-full max-w-md p-8">
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+    <div className="flex min-h-screen items-center justify-center app-shell-bg px-4">
+      <div className="card-elevated w-full max-w-md p-8">
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
         </div>
       </div>
     </div>

@@ -15,6 +15,7 @@ export type ProjectExportRow = {
   customer_name: string;
   value: number;
   progress_type: string;
+  outcome_status?: string | null;
   prospect: string;
   sales_name: string;
   date: string;
@@ -36,6 +37,7 @@ export function exportProjectsToExcel(rows: ProjectExportRow[]) {
       Customer: p.customer_name,
       Value: p.value,
       "Progress Type": p.progress_type,
+      Outcome: p.outcome_status ?? "",
       Prospect: p.prospect,
       Sales: p.sales_name,
       Date: p.date,

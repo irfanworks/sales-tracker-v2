@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, UserPlus, Trash2 } from "lucide-react";
 import { SECTOR_OPTIONS } from "@/lib/types/database";
+import { slugWithId } from "@/lib/slugify";
+import {
+  CustomerNameAutocomplete,
+  findExactCustomerMatch,
+  type CustomerNameOption,
+} from "@/components/CustomerNameAutocomplete";
 
 interface PicRow {
   nama: string;
@@ -15,13 +21,19 @@ interface PicRow {
 
 const emptyPic = (): PicRow => ({ nama: "", email: "", no_hp: "", jabatan: "" });
 
-export function AddCustomerForm() {
+export function AddCustomerForm({
+  existingCustomers,
+}: {
+  existingCustomers: CustomerNameOption[];
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [sector, setSector] = useState<string>("");
   const [pics, setPics] = useState<PicRow[]>([emptyPic()]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const duplicateMatch = findExactCustomerMatch(name, existingCustomers);
 
   function addPic() {
     setPics((prev) => [...prev, emptyPic()]);
@@ -38,6 +50,12 @@ export function AddCustomerForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (duplicateMatch) {
+      setError("Customer name already exists. Use the existing customer record instead.");
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
     const { data: customer, error: insertError } = await supabase
@@ -52,6 +70,12 @@ export function AddCustomerForm() {
       setError(insertError.message);
       setLoading(false);
       return;
+    }
+    if (customer?.id) {
+      await supabase
+        .from("customers")
+        .update({ slug: slugWithId(name.trim(), customer.id) })
+        .eq("id", customer.id);
     }
     const picsToInsert = pics.filter(
       (p) => p.nama.trim() || p.email.trim() || p.no_hp.trim() || p.jabatan.trim()
@@ -81,15 +105,15 @@ export function AddCustomerForm() {
           <label htmlFor="customer-name" className="mb-1 block text-sm font-medium text-slate-700">
             Customer name *
           </label>
-          <input
-            id="customer-name"
-            type="text"
+          <CustomerNameAutocomplete
             value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="input-field"
-            placeholder="e.g. Acme Corp"
-            required
+            onChange={setName}
+            existingCustomers={existingCustomers}
+            disabled={loading}
           />
+          <p className="mt-1 text-xs text-slate-500">
+            Type to search existing customers and avoid duplicates.
+          </p>
         </div>
         <div>
           <label htmlFor="customer-sector" className="mb-1 block text-sm font-medium text-slate-700">
@@ -113,7 +137,7 @@ export function AddCustomerForm() {
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <label className="text-sm font-medium text-slate-700">PIC (optional, bisa lebih dari 1)</label>
+          <label className="text-sm font-medium text-slate-700">PIC (optional)</label>
           <button
             type="button"
             onClick={addPic}
@@ -171,7 +195,11 @@ export function AddCustomerForm() {
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <button type="submit" className="btn-primary gap-2" disabled={loading}>
+      <button
+        type="submit"
+        className="btn-primary gap-2"
+        disabled={loading || Boolean(duplicateMatch)}
+      >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
         Add customer
       </button>

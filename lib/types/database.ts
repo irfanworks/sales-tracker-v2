@@ -31,13 +31,20 @@ export interface Customer {
   id: string;
   name: string;
   sector?: SectorOption | null;
+  slug?: string | null;
   created_at?: string;
   pics?: CustomerPic[];
 }
 
-export const PROGRESS_TYPES = ["Budgetary", "Tender", "Win", "Lose"] as const;
+/** Progress type at project creation / lifecycle stage */
+export const PROGRESS_TYPES = ["Budgetary", "Tender", "BD"] as const;
+/** Shown on Projects menu only (BD has its own page) */
+export const PROJECTS_LIST_PROGRESS_TYPES = ["Budgetary", "Tender"] as const;
+export const OUTCOME_STATUSES = ["Win", "Lose"] as const;
 export const PROSPECT_OPTIONS = ["Hot Prospect", "Normal"] as const;
+
 export type ProgressType = (typeof PROGRESS_TYPES)[number];
+export type OutcomeStatus = (typeof OUTCOME_STATUSES)[number];
 export type ProspectOption = (typeof PROSPECT_OPTIONS)[number];
 
 export interface ProjectUpdate {
@@ -50,6 +57,7 @@ export interface ProjectUpdate {
 
 export interface Project {
   id: string;
+  slug?: string | null;
   created_at: string;
   no_quote: string;
   project_name: string;
@@ -57,6 +65,7 @@ export interface Project {
   value: number;
   status?: string;
   progress_type: ProgressType;
+  outcome_status?: OutcomeStatus | null;
   prospect: ProspectOption;
   weekly_update: string | null;
   target_closing_at?: string | null;

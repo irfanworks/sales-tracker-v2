@@ -19,6 +19,7 @@ export function buildProjectsWorkbook(rows: ProjectExportRow[]) {
       Customer: p.customer_name,
       Value: p.value,
       "Progress Type": p.progress_type,
+      Outcome: p.outcome_status ?? "",
       Prospect: p.prospect,
       Sales: p.sales_name,
       Date: p.date,

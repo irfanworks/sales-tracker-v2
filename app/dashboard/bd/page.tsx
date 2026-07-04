@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { getProfile, getSalesOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getProfile, getSalesOptions, getSupabase } from "@/lib/auth";
 import { getCurrencyRates } from "@/lib/currency";
 import { calcProjectValueMetrics } from "@/lib/projectMetrics";
 import {
@@ -10,35 +11,40 @@ import {
   parseProjectListParams,
   type ProjectListParams,
 } from "@/lib/projectsQuery";
-import { getSupabase } from "@/lib/auth";
 import { ProjectsTable } from "@/components/ProjectsTable";
 import { ProjectsFilters } from "@/components/ProjectsFilters";
 import { ExportProjectsButton } from "@/components/ExportProjectsButton";
 import { ProjectsSummaryCards } from "@/components/ProjectsSummaryCards";
 import { ProjectsPagination } from "@/components/ProjectsPagination";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FolderKanban } from "lucide-react";
+import { Briefcase } from "lucide-react";
 
-export default async function ProjectsListPage({
+export default async function BdProjectsPage({
   searchParams,
 }: {
   searchParams: Promise<ProjectListParams>;
 }) {
+  const profile = await getProfile();
+  if (!profile) redirect("/login");
+  if (profile.role !== "admin") redirect("/dashboard");
+
   const params = await searchParams;
   const { page } = parseProjectListParams(params);
   const from = (page - 1) * PROJECTS_PAGE_SIZE;
   const to = from + PROJECTS_PAGE_SIZE - 1;
 
   const supabase = await getSupabase();
-  const [profile, currencyRates, salesOptions, listResult, metricsResult] = await Promise.all([
-    getProfile(),
+  const [currencyRates, salesOptions, listResult, metricsResult] = await Promise.all([
     getCurrencyRates(),
     getSalesOptions(),
-    buildProjectsListQuery(supabase, params, { count: "exact", range: { from, to } }),
-    buildProjectsMetricsQuery(supabase, params),
+    buildProjectsListQuery(supabase, params, {
+      count: "exact",
+      range: { from, to },
+      scope: "bd",
+    }),
+    buildProjectsMetricsQuery(supabase, params, "bd"),
   ]);
 
-  const isAdmin = profile?.role === "admin";
   const { data: projectsRaw, error, count } = listResult;
   const { data: metricsRows, error: metricsError } = metricsResult;
 
@@ -46,7 +52,7 @@ export default async function ProjectsListPage({
     return (
       <div className="card p-6">
         <p className="text-red-600">
-          Error loading projects: {error?.message ?? metricsError?.message}
+          Error loading BD projects: {error?.message ?? metricsError?.message}
         </p>
       </div>
     );
@@ -81,14 +87,14 @@ export default async function ProjectsListPage({
   );
 
   const totalCount = count ?? 0;
-  const exportQuery = buildExportSearchParams(params);
+  const exportQuery = buildExportSearchParams(params, "bd");
 
   return (
     <div className="space-y-6">
       <PageHeader
-        icon={FolderKanban}
-        title="Projects"
-        description="Budgetary and Tender projects (BD projects are on the BD menu)."
+        icon={Briefcase}
+        title="BD"
+        description="Company monitoring focus — all Business Development projects (Hot Prospect & Normal)."
         actions={<ExportProjectsButton exportQuery={exportQuery} disabled={totalCount === 0} />}
       />
       <Suspense fallback={<div className="card shimmer h-24 rounded-2xl" />}>
@@ -99,8 +105,9 @@ export default async function ProjectsListPage({
           sortBy={params.sort_by}
           sortOrder={params.sort_order}
           salesOptions={salesOptions}
-          showSalesFilter={isAdmin}
-          basePath="/dashboard/projects"
+          showSalesFilter
+          showProgressFilter={false}
+          basePath="/dashboard/bd"
         />
       </Suspense>
       <ProjectsSummaryCards
@@ -129,12 +136,13 @@ export default async function ProjectsListPage({
             customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
             sales_name: p.sales_name ?? null,
           }))}
+          emptyMessage="No BD projects yet."
         />
         <ProjectsPagination
           page={page}
           totalCount={totalCount}
           pageSize={PROJECTS_PAGE_SIZE}
-          basePath="/dashboard/projects"
+          basePath="/dashboard/bd"
           searchParams={params}
         />
       </div>

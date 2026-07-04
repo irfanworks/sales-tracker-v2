@@ -1,10 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CustomerEditForm } from "@/components/CustomerEditForm";
 import { SECTOR_OPTIONS } from "@/lib/types/database";
+import { ensureCustomerSlug, getCustomerBySlugOrId } from "@/lib/customers";
+import { getSupabase } from "@/lib/auth";
+import { isUuid } from "@/lib/isUuid";
 import type { Metadata } from "next";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -12,8 +16,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: customer } = await supabase.from("customers").select("name").eq("id", id).single();
+  const { customer } = await getCustomerBySlugOrId(id);
   if (!customer) return { title: "Customer | Enercon Sales Tracker" };
   return { title: `${customer.name} | Enercon Sales Tracker` };
 }
@@ -24,25 +27,24 @@ export default async function CustomerEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const { customer } = await getCustomerBySlugOrId(id);
 
-  const { data: customer, error } = await supabase
-    .from("customers")
-    .select("id, name, sector")
-    .eq("id", id)
-    .single();
-
-  if (error || !customer) {
+  if (!customer) {
     notFound();
   }
 
+  const canonicalSlug = await ensureCustomerSlug(customer);
+
+  if (isUuid(id)) {
+    redirect(`/dashboard/customers/${canonicalSlug}`);
+  }
+
+  const supabase = await getSupabase();
   const { data: pics } = await supabase
     .from("customer_pics")
     .select("id, nama, email, no_hp, jabatan")
     .eq("customer_id", customer.id)
     .order("created_at", { ascending: true });
-
-  const picsList = pics ?? [];
 
   return (
     <div className="space-y-6">
@@ -56,41 +58,11 @@ export default async function CustomerEditPage({
         </Link>
       </div>
 
-      {picsList.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="border-b border-slate-200 bg-slate-50/80 px-4 py-3 sm:px-6">
-            <h2 className="text-lg font-medium text-slate-800">PIC</h2>
-            <p className="mt-0.5 text-sm text-slate-600">Person in charge (saved)</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[400px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-100/80">
-                  <th className="px-4 py-3 font-medium text-slate-700">Name</th>
-                  <th className="px-4 py-3 font-medium text-slate-700">Email</th>
-                  <th className="px-4 py-3 font-medium text-slate-700">Phone Number</th>
-                  <th className="px-4 py-3 font-medium text-slate-700">Position</th>
-                </tr>
-              </thead>
-              <tbody>
-                {picsList.map((p) => (
-                  <tr key={p.id} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3 text-slate-700">{p.nama ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.email ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.no_hp ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.jabatan ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       <div className="card p-6">
         <h1 className="mb-6 text-xl font-semibold text-slate-800">Edit customer</h1>
         <CustomerEditForm
           customerId={customer.id}
+          customerSlug={canonicalSlug}
           initialName={customer.name}
           initialSector={customer.sector ?? ""}
           initialPics={(pics ?? []).map((p) => ({
