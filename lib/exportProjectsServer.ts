@@ -17,13 +17,16 @@ export function buildProjectsWorkbook(rows: ProjectExportRow[]) {
       "No Quote": p.no_quote,
       "Project Name": p.project_name,
       Customer: p.customer_name,
+      PIC: p.pic_name ?? "",
       Value: p.value,
+      Type: p.project_type ?? "Project",
       "Progress Type": p.progress_type,
       Outcome: p.outcome_status ?? "",
       Prospect: p.prospect,
       Sales: p.sales_name,
       Date: p.date,
       "Target Closing": p.target_closing_at ?? "",
+      Status: p.status ?? "Open",
       "All Updates": updatesText,
     };
   });

@@ -56,6 +56,20 @@ export function AddCustomerForm({
       return;
     }
 
+    const picsWithName = pics.filter((p) => p.nama.trim());
+    if (picsWithName.length === 0) {
+      setError("At least one PIC with a name is required.");
+      return;
+    }
+
+    const incomplete = pics.find(
+      (p) => !p.nama.trim() && (p.email.trim() || p.no_hp.trim() || p.jabatan.trim())
+    );
+    if (incomplete) {
+      setError("PIC name is required for each PIC entry.");
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
     const { data: customer, error: insertError } = await supabase
@@ -77,14 +91,12 @@ export function AddCustomerForm({
         .update({ slug: slugWithId(name.trim(), customer.id) })
         .eq("id", customer.id);
     }
-    const picsToInsert = pics.filter(
-      (p) => p.nama.trim() || p.email.trim() || p.no_hp.trim() || p.jabatan.trim()
-    );
-    if (picsToInsert.length > 0 && customer?.id) {
+    const picsToInsert = picsWithName;
+    if (customer?.id) {
       await supabase.from("customer_pics").insert(
         picsToInsert.map((p) => ({
           customer_id: customer.id,
-          nama: p.nama.trim() || null,
+          nama: p.nama.trim(),
           email: p.email.trim() || null,
           no_hp: p.no_hp.trim() || null,
           jabatan: p.jabatan.trim() || null,
@@ -137,7 +149,9 @@ export function AddCustomerForm({
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <label className="text-sm font-medium text-slate-700">PIC (optional)</label>
+          <label className="text-sm font-medium text-slate-700">
+            PIC <span className="text-red-600">*</span>
+          </label>
           <button
             type="button"
             onClick={addPic}
@@ -147,6 +161,7 @@ export function AddCustomerForm({
             Add PIC
           </button>
         </div>
+        <p className="mb-2 text-xs text-slate-500">At least one PIC with a name is required.</p>
         <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
           {pics.map((pic, i) => (
             <div key={i} className="grid gap-3 rounded border border-slate-100 bg-white p-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -155,7 +170,8 @@ export function AddCustomerForm({
                 value={pic.nama}
                 onChange={(e) => updatePic(i, "nama", e.target.value)}
                 className="input-field"
-                placeholder="PIC Name"
+                placeholder="PIC Name *"
+                required
               />
               <input
                 type="email"

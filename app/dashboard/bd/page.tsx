@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getProfile, getSalesOptions, getSupabase } from "@/lib/auth";
 import { getCurrencyRates } from "@/lib/currency";
-import { calcProjectValueMetrics } from "@/lib/projectMetrics";
+import { calcProjectSecondaryMetrics, calcProjectValueMetrics } from "@/lib/projectMetrics";
 import {
   PROJECTS_PAGE_SIZE,
   buildExportSearchParams,
@@ -17,6 +17,7 @@ import { ExportProjectsButton } from "@/components/ExportProjectsButton";
 import { ProjectsSummaryCards } from "@/components/ProjectsSummaryCards";
 import { ProjectsPagination } from "@/components/ProjectsPagination";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { CurrencyProvider } from "@/components/ui/CurrencyToggle";
 import { Briefcase } from "lucide-react";
 
 export default async function BdProjectsPage({
@@ -77,14 +78,18 @@ export default async function BdProjectsPage({
     sales_name: salesNames[p.sales_id] ?? null,
   }));
 
-  const { totalValueProject, totalValueWin, totalValueHotProspect } = calcProjectValueMetrics(
-    (metricsRows ?? []).map((p) => ({
-      value: p.value != null ? Number(p.value) : null,
-      progress_type: p.progress_type,
-      prospect: p.prospect,
-      outcome_status: p.outcome_status,
-    }))
-  );
+  const metricRows = (metricsRows ?? []).map((p) => ({
+    value: p.value != null ? Number(p.value) : null,
+    progress_type: p.progress_type,
+    prospect: p.prospect,
+    outcome_status: p.outcome_status,
+    status: p.status,
+  }));
+
+  const { totalValueProject, totalValueWin, totalValueHotProspect } =
+    calcProjectValueMetrics(metricRows);
+  const { projectLose, projectOnHold, valueProjectOnHold, tenderOnProgress } =
+    calcProjectSecondaryMetrics(metricRows);
 
   const totalCount = count ?? 0;
   const exportQuery = buildExportSearchParams(params, "bd");
@@ -101,6 +106,7 @@ export default async function BdProjectsPage({
         <ProjectsFilters
           progressType={params.progress_type}
           prospect={params.prospect}
+          outcomeStatus={params.outcome_status}
           salesId={params.sales_id}
           sortBy={params.sort_by}
           sortOrder={params.sort_order}
@@ -110,42 +116,53 @@ export default async function BdProjectsPage({
           basePath="/dashboard/bd"
         />
       </Suspense>
-      <ProjectsSummaryCards
-        totalValueProject={totalValueProject}
-        totalValueWin={totalValueWin}
-        totalValueHotProspect={totalValueHotProspect}
+      <CurrencyProvider
         usdPerIdr={currencyRates.usdPerIdr}
         sgdPerIdr={currencyRates.sgdPerIdr}
-      />
-      <div className="table-shell">
-        <ProjectsTable
-          projects={projectsWithSales.map((p) => ({
-            id: p.id,
-            slug: p.slug,
-            created_at: p.created_at,
-            no_quote: p.no_quote,
-            project_name: p.project_name,
-            customer_id: p.customer_id,
-            value: p.value != null ? Number(p.value) : null,
-            progress_type: p.progress_type,
-            outcome_status: p.outcome_status,
-            prospect: p.prospect,
-            weekly_update: null,
-            target_closing_at: p.target_closing_at,
-            sales_id: p.sales_id,
-            customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
-            sales_name: p.sales_name ?? null,
-          }))}
-          emptyMessage="No BD projects yet."
+      >
+        <ProjectsSummaryCards
+          totalValueProject={totalValueProject}
+          totalValueWin={totalValueWin}
+          totalValueHotProspect={totalValueHotProspect}
+          projectLose={projectLose}
+          projectOnHold={projectOnHold}
+          valueProjectOnHold={valueProjectOnHold}
+          tenderOnProgress={tenderOnProgress}
+          usdPerIdr={currencyRates.usdPerIdr}
+          sgdPerIdr={currencyRates.sgdPerIdr}
         />
-        <ProjectsPagination
-          page={page}
-          totalCount={totalCount}
-          pageSize={PROJECTS_PAGE_SIZE}
-          basePath="/dashboard/bd"
-          searchParams={params}
-        />
-      </div>
+        <div className="table-shell">
+          <ProjectsTable
+            projects={projectsWithSales.map((p) => ({
+              id: p.id,
+              slug: p.slug,
+              created_at: p.created_at,
+              no_quote: p.no_quote,
+              project_name: p.project_name,
+              customer_id: p.customer_id,
+              value: p.value != null ? Number(p.value) : null,
+              project_type: p.project_type,
+              status: p.status,
+              progress_type: p.progress_type,
+              outcome_status: p.outcome_status,
+              prospect: p.prospect,
+              weekly_update: null,
+              target_closing_at: p.target_closing_at,
+              sales_id: p.sales_id,
+              customer: Array.isArray(p.customers) ? p.customers[0] : p.customers,
+              sales_name: p.sales_name ?? null,
+            }))}
+            emptyMessage="No BD projects yet."
+          />
+          <ProjectsPagination
+            page={page}
+            totalCount={totalCount}
+            pageSize={PROJECTS_PAGE_SIZE}
+            basePath="/dashboard/bd"
+            searchParams={params}
+          />
+        </div>
+      </CurrencyProvider>
     </div>
   );
 }

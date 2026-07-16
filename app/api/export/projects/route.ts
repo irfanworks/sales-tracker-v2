@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { format } from "date-fns";
-import { getAuthUser } from "@/lib/auth";
-import { getSupabase } from "@/lib/auth";
+import { getAuthUser, getProfile, getSupabase } from "@/lib/auth";
 import { buildProjectsListQuery } from "@/lib/projectsQuery";
 import { buildProjectsWorkbook } from "@/lib/exportProjectsServer";
 
@@ -11,8 +10,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const profile = await getProfile();
   const params = Object.fromEntries(request.nextUrl.searchParams.entries());
   const scope = params.scope === "bd" ? "bd" : "projects";
+
+  // Non-admins can only export their own projects
+  if (profile?.role !== "admin") {
+    params.sales_id = user.id;
+  }
+
   const supabase = await getSupabase();
 
   const { data: projectsRaw, error } = await buildProjectsListQuery(supabase, params, { scope });
@@ -54,13 +60,16 @@ export async function GET(request: NextRequest) {
       no_quote: p.no_quote,
       project_name: p.project_name,
       customer_name: customer?.name ?? "",
+      pic_name: p.pic_name ?? null,
       value: p.value != null ? Number(p.value) : 0,
       progress_type: p.progress_type,
+      project_type: p.project_type ?? "Project",
       outcome_status: p.outcome_status ?? null,
       prospect: p.prospect,
       sales_name: salesNames[p.sales_id] ?? "",
       date: format(new Date(p.created_at), "dd MMM yyyy"),
       target_closing_at: p.target_closing_at ?? null,
+      status: p.status ?? "Open",
       updates: updatesByProject[p.id] ?? [],
     };
   });

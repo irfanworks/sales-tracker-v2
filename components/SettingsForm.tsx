@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { formatNumberAsThousands, formatThousandsInput, parseThousandsInput } from "@/lib/formatThousands";
 
 export function SettingsForm({
   initialDisplayName,
@@ -11,15 +12,20 @@ export function SettingsForm({
   isAdmin,
   initialUsdPerIdr,
   initialSgdPerIdr,
+  initialAnnualSalesTarget,
 }: {
   initialDisplayName: string;
   userId: string;
   isAdmin: boolean;
   initialUsdPerIdr: number;
   initialSgdPerIdr: number;
+  initialAnnualSalesTarget: number | null;
 }) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [annualTargetDisplay, setAnnualTargetDisplay] = useState(
+    formatNumberAsThousands(initialAnnualSalesTarget)
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -32,9 +38,20 @@ export function SettingsForm({
     setSuccess(false);
     setLoading(true);
     const supabase = createClient();
+
+    const annualTarget = parseThousandsInput(annualTargetDisplay);
+    if (annualTargetDisplay.trim() && (annualTarget == null || annualTarget < 0)) {
+      setLoading(false);
+      setError("Annual sales target must be a valid non-negative number.");
+      return;
+    }
+
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ display_name: displayName.trim() || null })
+      .update({
+        display_name: displayName.trim() || null,
+        annual_sales_target: annualTarget,
+      })
       .eq("id", userId);
     if (updateError) {
       setLoading(false);
@@ -80,6 +97,24 @@ export function SettingsForm({
           className="input-field"
           placeholder="Name displayed on Dashboard"
         />
+      </div>
+      <div>
+        <label htmlFor="annual-target" className="mb-1 block text-sm font-medium text-slate-700">
+          Annual sales target (IDR)
+        </label>
+        <input
+          id="annual-target"
+          type="text"
+          inputMode="numeric"
+          value={annualTargetDisplay}
+          onChange={(e) => setAnnualTargetDisplay(formatThousandsInput(e.target.value))}
+          className="input-field tabular-nums"
+          placeholder="e.g. 10,000,000,000"
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          Your personal closing target for Target Achievement on the dashboard (Won vs this
+          amount).
+        </p>
       </div>
       {isAdmin && (
         <div className="space-y-4 rounded-lg border border-slate-200 p-4">

@@ -1,30 +1,46 @@
 "use client";
 
-import { useState } from "react";
 import { BarChart3, Award, TrendingUp } from "lucide-react";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { CurrencyToggle, useCurrencyFormatter, type Currency } from "@/components/ui/CurrencyToggle";
+import { CurrencyScopeToggle, useCurrencyScope } from "@/components/ui/CurrencyToggle";
+import { ProjectsSecondaryCards } from "@/components/ProjectsSecondaryCards";
 
 export function ProjectsSummaryCards({
   totalValueProject,
   totalValueWin,
   totalValueHotProspect,
+  projectLose,
+  projectOnHold,
+  valueProjectOnHold,
+  tenderOnProgress,
   usdPerIdr,
   sgdPerIdr,
 }: {
   totalValueProject: number;
   totalValueWin: number;
   totalValueHotProspect: number;
+  projectLose: number;
+  projectOnHold: number;
+  valueProjectOnHold: number;
+  tenderOnProgress: number;
   usdPerIdr: number;
   sgdPerIdr: number;
 }) {
-  const [currency, setCurrency] = useState<Currency>("IDR");
-  const formatCurrency = useCurrencyFormatter(currency);
+  const scope = useCurrencyScope();
+  const currency = scope?.currency ?? "IDR";
+  const rates = {
+    usdPerIdr: scope?.usdPerIdr ?? usdPerIdr,
+    sgdPerIdr: scope?.sgdPerIdr ?? sgdPerIdr,
+  };
 
-  const toCurrency = (valueInIdr: number): number => {
-    if (currency === "USD") return valueInIdr * usdPerIdr;
-    if (currency === "SGD") return valueInIdr * sgdPerIdr;
-    return valueInIdr;
+  const formatValue = (valueInIdr: number) => {
+    if (scope) return scope.format(valueInIdr);
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(valueInIdr);
   };
 
   const valueClass =
@@ -32,33 +48,41 @@ export function ProjectsSummaryCards({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-sm font-medium text-slate-600">Display currency</span>
-        <CurrencyToggle value={currency} onChange={setCurrency} />
+      <div className="flex justify-end">
+        <CurrencyScopeToggle />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <MetricCard
-          label="Total Value Project"
-          value={<span className={valueClass}>{formatCurrency(toCurrency(totalValueProject))}</span>}
-          hint="Filtered results, excluding Lose outcome"
+          label="Quoted Project"
+          value={<span className={valueClass}>{formatValue(totalValueProject)}</span>}
+          hint="Excluding Lose and On Hold outcomes"
           icon={BarChart3}
           variant="default"
         />
         <MetricCard
-          label="Total Value Win"
-          value={<span className={valueClass}>{formatCurrency(toCurrency(totalValueWin))}</span>}
+          label="Project Win"
+          value={<span className={valueClass}>{formatValue(totalValueWin)}</span>}
           hint="Win outcome in current view"
           icon={Award}
           variant="cyan"
         />
         <MetricCard
-          label="Total Value Hot Prospect"
-          value={<span className={valueClass}>{formatCurrency(toCurrency(totalValueHotProspect))}</span>}
-          hint="Hot Prospect in current view, excluding Lose"
+          label="Hot Prospect"
+          value={<span className={valueClass}>{formatValue(totalValueHotProspect)}</span>}
+          hint="Hot Prospect in current view, excluding Lose and On Hold"
           icon={TrendingUp}
           variant="emerald"
         />
       </div>
+      <ProjectsSecondaryCards
+        projectLose={projectLose}
+        projectOnHold={projectOnHold}
+        valueProjectOnHold={valueProjectOnHold}
+        tenderOnProgress={tenderOnProgress}
+        currency={currency}
+        usdPerIdr={rates.usdPerIdr}
+        sgdPerIdr={rates.sgdPerIdr}
+      />
     </div>
   );
 }

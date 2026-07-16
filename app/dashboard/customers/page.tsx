@@ -56,7 +56,7 @@ export default async function CustomersPage() {
       <PageHeader
         icon={Users}
         title="Customers"
-        description="Master data customer. Sector & PIC optional."
+        description="Master data customer. Sector optional. At least one PIC (name) is required."
         actions={<ExportCustomersButton customers={normalized} />}
       />
       <div className="card-elevated p-5 sm:p-6">

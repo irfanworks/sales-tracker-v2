@@ -13,13 +13,16 @@ export type ProjectExportRow = {
   no_quote: string;
   project_name: string;
   customer_name: string;
+  pic_name?: string | null;
   value: number;
+  project_type?: string | null;
   progress_type: string;
   outcome_status?: string | null;
   prospect: string;
   sales_name: string;
   date: string;
   target_closing_at?: string | null;
+  status?: string | null;
   updates?: Array<{ content: string; created_at: string }>;
 };
 
@@ -35,13 +38,16 @@ export function exportProjectsToExcel(rows: ProjectExportRow[]) {
       "No Quote": p.no_quote,
       "Project Name": p.project_name,
       Customer: p.customer_name,
+      PIC: p.pic_name ?? "",
       Value: p.value,
+      Type: p.project_type ?? "Project",
       "Progress Type": p.progress_type,
       Outcome: p.outcome_status ?? "",
       Prospect: p.prospect,
       Sales: p.sales_name,
       Date: p.date,
       "Target Closing": p.target_closing_at ?? "",
+      Status: p.status ?? "Open",
       "All Updates": updatesText,
     };
   });

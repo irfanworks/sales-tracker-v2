@@ -7,6 +7,7 @@ export type ProjectListScope = "projects" | "bd";
 export type ProjectListParams = {
   progress_type?: string;
   prospect?: string;
+  outcome_status?: string;
   sales_id?: string;
   sort_by?: string;
   sort_order?: string;
@@ -21,10 +22,13 @@ const PROJECT_SELECT = `
   project_name,
   customer_id,
   value,
+  project_type,
+  status,
   progress_type,
   outcome_status,
   prospect,
   target_closing_at,
+  pic_name,
   sales_id,
   customers ( id, name, slug )
 `;
@@ -67,6 +71,7 @@ export function buildProjectsListQuery(
 
   if (params.progress_type) query = query.eq("progress_type", params.progress_type);
   if (params.prospect) query = query.eq("prospect", params.prospect);
+  if (params.outcome_status) query = query.eq("outcome_status", params.outcome_status);
   if (params.sales_id) query = query.eq("sales_id", params.sales_id);
 
   if (sortBy === "target_closing") {
@@ -87,12 +92,13 @@ export function buildProjectsMetricsQuery(
   params: ProjectListParams,
   scope: ProjectListScope = "projects"
 ) {
-  let query = supabase.from("projects").select("value, progress_type, prospect, outcome_status");
+  let query = supabase.from("projects").select("value, progress_type, prospect, outcome_status, status");
 
   query = applyScopeFilter(query, scope);
 
   if (params.progress_type) query = query.eq("progress_type", params.progress_type);
   if (params.prospect) query = query.eq("prospect", params.prospect);
+  if (params.outcome_status) query = query.eq("outcome_status", params.outcome_status);
   if (params.sales_id) query = query.eq("sales_id", params.sales_id);
 
   return query;
@@ -103,6 +109,7 @@ export function buildExportSearchParams(params: ProjectListParams, scope: Projec
   search.set("scope", scope);
   if (params.progress_type) search.set("progress_type", params.progress_type);
   if (params.prospect) search.set("prospect", params.prospect);
+  if (params.outcome_status) search.set("outcome_status", params.outcome_status);
   if (params.sales_id) search.set("sales_id", params.sales_id);
   if (params.sort_by) search.set("sort_by", params.sort_by);
   if (params.sort_order) search.set("sort_order", params.sort_order);

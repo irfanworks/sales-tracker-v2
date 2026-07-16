@@ -41,10 +41,14 @@ const config: Config = {
         card: "0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08)",
         elevated: "0 4px 6px rgba(15, 23, 42, 0.04), 0 16px 40px rgba(15, 23, 42, 0.12)",
       },
+      transitionTimingFunction: {
+        premium: "cubic-bezier(0.16, 1, 0.3, 1)",
+        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      },
       animation: {
-        shimmer: "shimmer 1.5s infinite",
-        "fade-in": "fadeIn 0.3s ease-out",
-        "slide-up": "slideUp 0.35s ease-out",
+        shimmer: "shimmer 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite",
+        "fade-in": "fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        "slide-up": "slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
       },
       keyframes: {
         shimmer: {
@@ -55,7 +59,7 @@ const config: Config = {
           to: { opacity: "1" },
         },
         slideUp: {
-          from: { opacity: "0", transform: "translateY(8px)" },
+          from: { opacity: "0", transform: "translateY(12px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
       },

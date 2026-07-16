@@ -16,6 +16,10 @@ interface PicRow {
 
 const emptyPic = (): PicRow => ({ nama: "", email: "", no_hp: "", jabatan: "" });
 
+function hasPicName(pic: PicRow) {
+  return Boolean(pic.nama.trim());
+}
+
 function hasPicContent(pic: PicRow) {
   return Boolean(pic.nama.trim() || pic.email.trim() || pic.no_hp.trim() || pic.jabatan.trim());
 }
@@ -82,6 +86,23 @@ export function CustomerEditForm({
     e.preventDefault();
     setError(null);
     setSuccess(null);
+
+    const picsToValidate = editingPics ? draftPics : savedPics;
+    const namedPics = picsToValidate.filter(hasPicName);
+    if (namedPics.length === 0) {
+      setError("At least one PIC with a name is required.");
+      setEditingPics(true);
+      return;
+    }
+    const incomplete = picsToValidate.find(
+      (p) => hasPicContent(p) && !hasPicName(p)
+    );
+    if (incomplete) {
+      setError("PIC name is required for each PIC entry.");
+      setEditingPics(true);
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
 
@@ -98,8 +119,8 @@ export function CustomerEditForm({
     }
 
     const picsToSave = editingPics
-      ? draftPics.filter(hasPicContent)
-      : savedPics.filter(hasPicContent);
+      ? draftPics.filter(hasPicName)
+      : savedPics.filter(hasPicName);
 
     const existingIds = picsToSave.filter((p) => p.id).map((p) => p.id as string);
     const { data: existingRows } = await supabase
@@ -124,7 +145,7 @@ export function CustomerEditForm({
         const { data, error: picError } = await supabase
           .from("customer_pics")
           .update({
-            nama: pic.nama.trim() || null,
+            nama: pic.nama.trim(),
             email: pic.email.trim() || null,
             no_hp: pic.no_hp.trim() || null,
             jabatan: pic.jabatan.trim() || null,
@@ -151,7 +172,7 @@ export function CustomerEditForm({
           .from("customer_pics")
           .insert({
             customer_id: customerId,
-            nama: pic.nama.trim() || null,
+            nama: pic.nama.trim(),
             email: pic.email.trim() || null,
             no_hp: pic.no_hp.trim() || null,
             jabatan: pic.jabatan.trim() || null,
@@ -220,8 +241,12 @@ export function CustomerEditForm({
       <div>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <label className="text-sm font-medium text-slate-700">Person in charge (PIC)</label>
-            <p className="text-xs text-slate-500">Optional. Saved PICs are shown as read-only until you edit.</p>
+            <label className="text-sm font-medium text-slate-700">
+              Person in charge (PIC) <span className="text-red-600">*</span>
+            </label>
+            <p className="text-xs text-slate-500">
+              At least one PIC with a name is required. Saved PICs are read-only until you edit.
+            </p>
           </div>
           {!editingPics && (
             <button
@@ -284,7 +309,8 @@ export function CustomerEditForm({
                   value={pic.nama}
                   onChange={(e) => updatePic(i, "nama", e.target.value)}
                   className="input-field"
-                  placeholder="PIC Name"
+                  placeholder="PIC Name *"
+                  required
                 />
                 <input
                   type="email"

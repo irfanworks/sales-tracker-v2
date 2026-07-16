@@ -9,9 +9,13 @@ import { useRouter } from "next/navigation";
 import { ProgressBadge } from "@/components/ProgressBadge";
 import { ProspectBadge } from "@/components/ProspectBadge";
 import { OutcomeBadge } from "@/components/OutcomeBadge";
+import { ProjectTypeBadge } from "@/components/ProjectTypeBadge";
+import { ProjectStatusToggle } from "@/components/ProjectStatusToggle";
 import { projectDetailPath } from "@/lib/projectPaths";
 import { customerDetailPath } from "@/lib/customerPaths";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useCurrencyScope } from "@/components/ui/CurrencyToggle";
+import type { LifecycleStatus } from "@/lib/types/database";
 
 const linkClass =
   "font-medium text-cyan-700 transition hover:text-cyan-800 hover:underline";
@@ -24,6 +28,8 @@ interface ProjectRow {
   project_name: string;
   customer_id: string;
   value: number | null;
+  project_type?: string | null;
+  status?: LifecycleStatus | null;
   progress_type: string;
   outcome_status?: string | null;
   prospect: string;
@@ -34,15 +40,6 @@ interface ProjectRow {
   sales_name?: string | null;
 }
 
-function formatIdr(value: number | null) {
-  if (value == null) return "—";
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(value);
-}
-
 export function ProjectsTable({
   projects,
   emptyMessage,
@@ -51,10 +48,21 @@ export function ProjectsTable({
   emptyMessage?: string;
 }) {
   const router = useRouter();
+  const currencyScope = useCurrencyScope();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function formatValue(value: number | null) {
+    if (value == null) return "—";
+    if (currencyScope) return currencyScope.format(value);
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(value);
+  }
 
   const allSelected = projects.length > 0 && selectedIds.size === projects.length;
   const someSelected = selectedIds.size > 0;
@@ -170,7 +178,9 @@ export function ProjectsTable({
                     </Link>
                     <p className="mt-0.5 font-mono text-xs text-slate-500">{p.no_quote}</p>
                   </div>
-                  <p className="shrink-0 text-sm font-bold text-slate-800">{formatIdr(p.value)}</p>
+                  <p className="shrink-0 text-sm font-bold tabular-nums text-slate-800">
+                    {formatValue(p.value)}
+                  </p>
                 </div>
                 <p className="mt-1 text-sm">
                   {p.customer ? (
@@ -185,13 +195,18 @@ export function ProjectsTable({
                   )}
                 </p>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  <ProjectTypeBadge value={p.project_type ?? "Project"} />
                   <ProgressBadge value={p.progress_type} />
                   <ProspectBadge value={p.prospect} />
                   <OutcomeBadge value={p.outcome_status} />
                 </div>
-                <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500">
                   <span>{p.sales_name ?? "—"}</span>
                   <span>{format(new Date(p.created_at), "dd MMM yyyy")}</span>
+                  <ProjectStatusToggle
+                    projectId={p.id}
+                    status={(p.status === "Closed" ? "Closed" : "Open") as LifecycleStatus}
+                  />
                 </div>
                 <div className="mt-3 flex items-center gap-3">
                   <Link
@@ -241,6 +256,7 @@ export function ProjectsTable({
               <th className="whitespace-nowrap px-4 py-3.5">No Quote</th>
               <th className="whitespace-nowrap px-4 py-3.5">Project</th>
               <th className="whitespace-nowrap px-4 py-3.5">Customer</th>
+              <th className="whitespace-nowrap px-4 py-3.5">Type</th>
               <th className="whitespace-nowrap px-4 py-3.5">Value</th>
               <th className="whitespace-nowrap px-4 py-3.5">Progress</th>
               <th className="whitespace-nowrap px-4 py-3.5">Prospect</th>
@@ -248,6 +264,7 @@ export function ProjectsTable({
               <th className="whitespace-nowrap px-4 py-3.5">Sales</th>
               <th className="whitespace-nowrap px-4 py-3.5">Date</th>
               <th className="whitespace-nowrap px-4 py-3.5">Target closing</th>
+              <th className="whitespace-nowrap px-4 py-3.5">Status</th>
               <th className="w-24 px-4 py-3.5" />
             </tr>
           </thead>
@@ -290,8 +307,11 @@ export function ProjectsTable({
                     <span className="text-slate-600">—</span>
                   )}
                 </td>
+                <td className="whitespace-nowrap px-4 py-3.5">
+                  <ProjectTypeBadge value={p.project_type ?? "Project"} />
+                </td>
                 <td className="whitespace-nowrap px-4 py-3.5 font-medium tabular-nums text-slate-800">
-                  {formatIdr(p.value)}
+                  {formatValue(p.value)}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3.5">
                   <ProgressBadge value={p.progress_type} />
@@ -310,6 +330,12 @@ export function ProjectsTable({
                   {p.target_closing_at
                     ? format(new Date(p.target_closing_at + "T00:00:00"), "dd MMM yyyy")
                     : "—"}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3.5">
+                  <ProjectStatusToggle
+                    projectId={p.id}
+                    status={(p.status === "Closed" ? "Closed" : "Open") as LifecycleStatus}
+                  />
                 </td>
                 <td className="whitespace-nowrap px-4 py-3.5">
                   <div className="flex items-center gap-1">
