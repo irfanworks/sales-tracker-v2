@@ -1,15 +1,15 @@
-import { isExcludedFromQuotedValue } from "@/lib/projectMetrics";
-import { projectDetailPath } from "@/lib/projectPaths";
+import { isExcludedFromQuotedValue } from "@/lib/pipelineMetrics";
+import { pipelineDetailPath } from "@/lib/pipelinePaths";
 
-export type DashboardProjectRow = {
+export type DashboardPipelineRow = {
   id: string;
   slug?: string | null;
   created_at: string;
   no_quote: string;
-  project_name: string;
+  pipeline_name: string;
   customer_id: string;
   value: number | null;
-  project_type?: string | null;
+  pipeline_type?: string | null;
   progress_type: string;
   outcome_status?: string | null;
   prospect: string;
@@ -23,11 +23,11 @@ export type DashboardProjectRow = {
     | null;
 };
 
-export type DashboardListProject = {
+export type DashboardListPipeline = {
   id: string;
   slug?: string | null;
   no_quote: string;
-  project_name: string;
+  pipeline_name: string;
   customer_name: string;
   value: number;
   progress_type: string;
@@ -52,18 +52,18 @@ function addDaysDateString(days: number) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function customerName(p: DashboardProjectRow) {
+function customerName(p: DashboardPipelineRow) {
   const raw = p.customers;
   const c = Array.isArray(raw) ? raw[0] : raw;
   return c?.name ?? "—";
 }
 
-function toListItem(p: DashboardProjectRow): DashboardListProject {
+function toListItem(p: DashboardPipelineRow): DashboardListPipeline {
   return {
     id: p.id,
     slug: p.slug,
     no_quote: p.no_quote,
-    project_name: p.project_name,
+    pipeline_name: p.pipeline_name,
     customer_name: customerName(p),
     value: Number(p.value ?? 0),
     progress_type: p.progress_type,
@@ -72,36 +72,36 @@ function toListItem(p: DashboardProjectRow): DashboardListProject {
     status: p.status ?? "Open",
     target_closing_at: p.target_closing_at ?? null,
     created_at: p.created_at,
-    href: projectDetailPath({
+    href: pipelineDetailPath({
       id: p.id,
       slug: p.slug,
       no_quote: p.no_quote,
-      project_name: p.project_name,
+      pipeline_name: p.pipeline_name,
     }),
   };
 }
 
-export function isOpenProject(p: DashboardProjectRow) {
+export function isOpenProject(p: DashboardPipelineRow) {
   return (p.status ?? "Open") === "Open";
 }
 
 /** Active pipeline: Open, not Lose / On Hold */
-export function isActivePipeline(p: DashboardProjectRow) {
+export function isActivePipeline(p: DashboardPipelineRow) {
   return isOpenProject(p) && !isExcludedFromQuotedValue(p.outcome_status);
 }
 
 export function calcDashboardKpis(
-  projects: DashboardProjectRow[],
+  projects: DashboardPipelineRow[],
   annualSalesTarget: number | null
 ) {
-  const pipelineProjects = projects.filter(isActivePipeline);
-  const totalPipelineValue = pipelineProjects.reduce((s, p) => s + Number(p.value ?? 0), 0);
+  const activePipelines = projects.filter(isActivePipeline);
+  const totalPipelineValue = activePipelines.reduce((s, p) => s + Number(p.value ?? 0), 0);
 
-  const wonProjects = projects.filter((p) => p.outcome_status === "Win");
-  const totalWon = wonProjects.reduce((s, p) => s + Number(p.value ?? 0), 0);
+  const wonPipelines = projects.filter((p) => p.outcome_status === "Win");
+  const totalWon = wonPipelines.reduce((s, p) => s + Number(p.value ?? 0), 0);
 
   const year = new Date().getFullYear();
-  const totalWonYtd = wonProjects
+  const totalWonYtd = wonPipelines
     .filter((p) => new Date(p.created_at).getFullYear() === year)
     .reduce((s, p) => s + Number(p.value ?? 0), 0);
   // Fallback to all-time Win if no wins recorded this year yet (legacy data)
@@ -110,6 +110,15 @@ export function calcDashboardKpis(
   const hotProspectValue = projects
     .filter((p) => p.prospect === "Hot Prospect" && !isExcludedFromQuotedValue(p.outcome_status))
     .reduce((s, p) => s + Number(p.value ?? 0), 0);
+
+  const totalProposals = projects.length;
+  const totalProjectWinCount = wonPipelines.length;
+  const totalHotProspectCount = projects.filter(
+    (p) => p.prospect === "Hot Prospect" && !isExcludedFromQuotedValue(p.outcome_status)
+  ).length;
+  const tenderOnProgress = projects.filter(
+    (p) => p.progress_type === "Tender" && (p.status ?? "Open") === "Open"
+  ).length;
 
   const target = annualSalesTarget != null && annualSalesTarget > 0 ? annualSalesTarget : null;
   const targetAchievementPct =
@@ -122,18 +131,24 @@ export function calcDashboardKpis(
     closingForTarget,
     annualSalesTarget: target,
     targetAchievementPct,
+    totalProposals,
+    totalProjectWinCount,
+    totalHotProspectCount,
+    tenderOnProgress,
   };
 }
 
 export type MonthlyQuotePoint = {
   key: string;
   label: string;
+  /** Quotes / pipelines created that month */
   count: number;
-  value: number;
+  /** Pipelines with Win outcome attributed to that month (by created_at) */
+  wins: number;
 };
 
 export function buildMonthlyQuoteSeries(
-  projects: DashboardProjectRow[],
+  projects: DashboardPipelineRow[],
   monthsBack: 3 | 12
 ): MonthlyQuotePoint[] {
   const now = new Date();
@@ -143,7 +158,7 @@ export function buildMonthlyQuoteSeries(
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     const label = d.toLocaleString("en-US", { month: "short", year: "2-digit" });
-    buckets.push({ key, label, count: 0, value: 0 });
+    buckets.push({ key, label, count: 0, wins: 0 });
   }
 
   const bucketMap = new Map(buckets.map((b) => [b.key, b]));
@@ -154,13 +169,13 @@ export function buildMonthlyQuoteSeries(
     const bucket = bucketMap.get(key);
     if (!bucket) continue;
     bucket.count += 1;
-    bucket.value += Number(p.value ?? 0);
+    if (p.outcome_status === "Win") bucket.wins += 1;
   }
 
   return buckets;
 }
 
-export function getOverdueProjects(projects: DashboardProjectRow[]): DashboardListProject[] {
+export function getOverdueProjects(projects: DashboardPipelineRow[]): DashboardListPipeline[] {
   const today = todayDateString();
   return projects
     .filter(
@@ -173,15 +188,15 @@ export function getOverdueProjects(projects: DashboardProjectRow[]): DashboardLi
     .map(toListItem);
 }
 
-export function isNearOverdue(p: DashboardProjectRow) {
+export function isNearOverdue(p: DashboardPipelineRow) {
   if (!p.target_closing_at || !isOpenProject(p)) return false;
   const today = todayDateString();
   const end = addDaysDateString(NEAR_OVERDUE_DAYS);
   return p.target_closing_at >= today && p.target_closing_at <= end;
 }
 
-/** Hot Prospect / Near Overdue / Tender — Open projects needing attention */
-export function getHotAttentionProjects(projects: DashboardProjectRow[]): DashboardListProject[] {
+/** Hot Prospect / Near Overdue / Tender — Open pipelines needing attention */
+export function getHotAttentionProjects(projects: DashboardPipelineRow[]): DashboardListPipeline[] {
   return projects
     .filter((p) => {
       if (!isOpenProject(p)) return false;
@@ -207,21 +222,21 @@ export type BreakdownPoint = {
   value: number;
 };
 
-function customerSector(p: DashboardProjectRow) {
+function customerSector(p: DashboardPipelineRow) {
   const raw = p.customers;
   const c = Array.isArray(raw) ? raw[0] : raw;
   return c?.sector?.trim() || "Unspecified";
 }
 
-/** Work by category = project_type (Project / Trading / Service) */
-export function buildWorkByCategory(projects: DashboardProjectRow[]): BreakdownPoint[] {
+/** Work by category = pipeline_type (Project / Trading / Service) */
+export function buildWorkByCategory(projects: DashboardPipelineRow[]): BreakdownPoint[] {
   const order = ["Project", "Trading", "Service"];
   const map = new Map<string, BreakdownPoint>();
   for (const label of order) {
     map.set(label, { label, count: 0, value: 0 });
   }
   for (const p of projects) {
-    const label = p.project_type?.trim() || "Project";
+    const label = p.pipeline_type?.trim() || "Project";
     const row = map.get(label) ?? { label, count: 0, value: 0 };
     row.count += 1;
     row.value += Number(p.value ?? 0);
@@ -231,7 +246,7 @@ export function buildWorkByCategory(projects: DashboardProjectRow[]): BreakdownP
 }
 
 /** Work by sector = customer sector */
-export function buildWorkBySector(projects: DashboardProjectRow[]): BreakdownPoint[] {
+export function buildWorkBySector(projects: DashboardPipelineRow[]): BreakdownPoint[] {
   const map = new Map<string, BreakdownPoint>();
   for (const p of projects) {
     const label = customerSector(p);

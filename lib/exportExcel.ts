@@ -11,11 +11,11 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export type ProjectExportRow = {
   no_quote: string;
-  project_name: string;
+  pipeline_name: string;
   customer_name: string;
   pic_name?: string | null;
   value: number;
-  project_type?: string | null;
+  pipeline_type?: string | null;
   progress_type: string;
   outcome_status?: string | null;
   prospect: string;
@@ -36,11 +36,11 @@ export function exportProjectsToExcel(rows: ProjectExportRow[]) {
         : "";
     return {
       "No Quote": p.no_quote,
-      "Project Name": p.project_name,
+      "Pipeline Name": p.pipeline_name,
       Customer: p.customer_name,
       PIC: p.pic_name ?? "",
       Value: p.value,
-      Type: p.project_type ?? "Project",
+      Type: p.pipeline_type ?? "Project",
       "Progress Type": p.progress_type,
       Outcome: p.outcome_status ?? "",
       Prospect: p.prospect,
@@ -53,14 +53,14 @@ export function exportProjectsToExcel(rows: ProjectExportRow[]) {
   });
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Projects");
+  XLSX.utils.book_append_sheet(wb, ws, "Pipeline");
 
-  const updateRows: Array<{ "No Quote": string; "Project Name": string; "Update Date": string; Content: string }> = [];
+  const updateRows: Array<{ "No Quote": string; "Pipeline Name": string; "Update Date": string; Content: string }> = [];
   rows.forEach((p) => {
     (p.updates ?? []).forEach((u) => {
       updateRows.push({
         "No Quote": p.no_quote,
-        "Project Name": p.project_name,
+        "Pipeline Name": p.pipeline_name,
         "Update Date": new Date(u.created_at).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" }),
         Content: u.content,
       });
@@ -73,7 +73,7 @@ export function exportProjectsToExcel(rows: ProjectExportRow[]) {
 
   const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  const filename = `projects-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `pipeline-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
   downloadBlob(blob, filename);
 }
 
@@ -97,30 +97,5 @@ export function exportCustomersToExcel(
   const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const filename = `customers-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
-  downloadBlob(blob, filename);
-}
-
-export function exportBdUpdatesToExcel(
-  rows: Array<{
-    week: string;
-    sales_name: string;
-    customer_name: string;
-    content: string;
-    updated_at: string;
-  }>
-) {
-  const data = rows.map((r) => ({
-    Week: r.week,
-    Sales: r.sales_name,
-    Customer: r.customer_name,
-    "Update Description": r.content || "",
-    "Update Date": r.updated_at,
-  }));
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "BD Updates");
-  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  const filename = `bd-monitoring-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
   downloadBlob(blob, filename);
 }

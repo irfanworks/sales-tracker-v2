@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Enercon Indonesia's Sales Tracker",
-  description: "Track sales projects and customer pipeline",
+  description: "Track sales pipelines and customer pipeline",
   icons: { icon: "/logo.png" },
 };
 

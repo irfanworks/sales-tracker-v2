@@ -8,9 +8,8 @@ import {
   Users,
   PlusCircle,
   Settings,
-  ClipboardList,
-  BarChart3,
-  Briefcase,
+  Target,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,36 +17,35 @@ type NavItem = { href: string; label: string; icon: LucideIcon; group?: "main" |
 
 const navItemsBase: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, group: "main" },
-  { href: "/dashboard/projects", label: "Projects", icon: FolderKanban, group: "main" },
-  { href: "/dashboard/projects/new", label: "New Project", icon: PlusCircle, group: "main" },
+  { href: "/dashboard/pipeline", label: "Pipeline", icon: FolderKanban, group: "main" },
+  { href: "/dashboard/pipeline/new", label: "New Pipeline", icon: PlusCircle, group: "main" },
+  { href: "/dashboard/prospects", label: "Prospect", icon: Target, group: "main" },
+  { href: "/dashboard/prospects/new", label: "New Prospect", icon: PlusCircle, group: "main" },
   { href: "/dashboard/customers", label: "Customers", icon: Users, group: "main" },
-  { href: "/dashboard/bd-updates", label: "BD Updates", icon: ClipboardList, group: "main" },
+  { href: "/dashboard/sales-activity", label: "Sales Activity", icon: Activity, group: "main" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, group: "main" },
 ];
 
-const navItemBd: NavItem = { href: "/dashboard/bd", label: "BD", icon: Briefcase, group: "main" };
-const navItemBdMonitoring: NavItem = {
-  href: "/dashboard/admin/bd-monitoring",
-  label: "BD Monitoring",
-  icon: BarChart3,
-  group: "admin",
-};
-
 function buildNavItems(isAdmin: boolean): NavItem[] {
-  if (!isAdmin) return navItemsBase;
-
-  const items = [...navItemsBase];
-  const newProjectIndex = items.findIndex((item) => item.href === "/dashboard/projects/new");
-  items.splice(newProjectIndex + 1, 0, navItemBd);
-  items.push(navItemBdMonitoring);
-  return items;
+  void isAdmin;
+  return navItemsBase;
 }
 
 function isNavActive(pathname: string, href: string): boolean {
   if (pathname === href) return true;
   if (href === "/dashboard") return false;
-  if (href === "/dashboard/bd") {
-    return pathname === "/dashboard/bd" || pathname.startsWith("/dashboard/bd/");
+  // Avoid /dashboard/pipeline matching /dashboard/pipeline/new
+  if (href === "/dashboard/pipeline") {
+    return (
+      pathname === href ||
+      (pathname.startsWith(`${href}/`) && !pathname.startsWith(`${href}/new`))
+    );
+  }
+  if (href === "/dashboard/prospects") {
+    return (
+      pathname === href ||
+      (pathname.startsWith(`${href}/`) && !pathname.startsWith(`${href}/new`))
+    );
   }
   return pathname.startsWith(href);
 }

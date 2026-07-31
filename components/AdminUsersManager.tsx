@@ -174,7 +174,7 @@ export function AdminUsersManager({
   function confirmDelete(user: ManagedUser) {
     const ok = window.confirm(
       `Delete ${user.display_name} (${user.email})?\n\n` +
-        "This permanently removes the account and all projects / BD updates owned by this user. This cannot be undone."
+        "This permanently removes the account and all pipelines / prospects owned by this user. This cannot be undone."
     );
     if (!ok) return;
     setError(null);

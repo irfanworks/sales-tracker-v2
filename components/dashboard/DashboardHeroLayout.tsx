@@ -1,24 +1,31 @@
 "use client";
 
-import { CurrencyToggle, type Currency } from "@/components/ui/CurrencyToggle";
-import { useState } from "react";
+import {
+  CurrencyProvider,
+  CurrencyToggle,
+  useCurrencyScope,
+} from "@/components/ui/CurrencyToggle";
 import { DashboardSummaryCard } from "@/components/dashboard/DashboardSummaryCard";
+import { DashboardCountCards } from "@/components/dashboard/DashboardCountCards";
 import { TargetDonutCard } from "@/components/dashboard/TargetDonutCard";
 import { LazyQuoteSubmittedChart } from "@/components/dashboard/LazyQuoteSubmittedChart";
 import type { MonthlyQuotePoint } from "@/lib/dashboard";
 
-export function DashboardHeroLayout({
+function HeroBody({
   totalPipelineValue,
   hotProspectValue,
   totalWon,
   closingForTarget,
   annualSalesTarget,
   targetAchievementPct,
+  totalProposals,
+  totalProjectWinCount,
+  totalHotProspectCount,
+  tenderOnProgress,
   series3m,
   series12m,
-  usdPerIdr,
-  sgdPerIdr,
   targetCaption,
+  children,
 }: {
   totalPipelineValue: number;
   hotProspectValue: number;
@@ -26,13 +33,19 @@ export function DashboardHeroLayout({
   closingForTarget: number;
   annualSalesTarget: number | null;
   targetAchievementPct: number | null;
+  totalProposals: number;
+  totalProjectWinCount: number;
+  totalHotProspectCount: number;
+  tenderOnProgress: number;
   series3m: MonthlyQuotePoint[];
   series12m: MonthlyQuotePoint[];
-  usdPerIdr: number;
-  sgdPerIdr: number;
   targetCaption?: string;
+  children?: React.ReactNode;
 }) {
-  const [currency, setCurrency] = useState<Currency>("IDR");
+  const scope = useCurrencyScope();
+  if (!scope) return null;
+
+  const { currency, setCurrency, usdPerIdr, sgdPerIdr } = scope;
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -64,6 +77,13 @@ export function DashboardHeroLayout({
         />
       </div>
 
+      <DashboardCountCards
+        totalProposals={totalProposals}
+        totalProjectWinCount={totalProjectWinCount}
+        totalHotProspectCount={totalHotProspectCount}
+        tenderOnProgress={tenderOnProgress}
+      />
+
       <div className="grid gap-4 lg:grid-cols-3 lg:gap-5">
         <div className="lg:col-span-1">
           <TargetDonutCard
@@ -80,13 +100,70 @@ export function DashboardHeroLayout({
           <LazyQuoteSubmittedChart
             series3m={series3m}
             series12m={series12m}
-            usdPerIdr={usdPerIdr}
-            sgdPerIdr={sgdPerIdr}
-            currency={currency}
             fillHeight
           />
         </div>
       </div>
+
+      {children}
     </div>
+  );
+}
+
+export function DashboardHeroLayout({
+  totalPipelineValue,
+  hotProspectValue,
+  totalWon,
+  closingForTarget,
+  annualSalesTarget,
+  targetAchievementPct,
+  totalProposals,
+  totalProjectWinCount,
+  totalHotProspectCount,
+  tenderOnProgress,
+  series3m,
+  series12m,
+  usdPerIdr,
+  sgdPerIdr,
+  targetCaption,
+  children,
+}: {
+  totalPipelineValue: number;
+  hotProspectValue: number;
+  totalWon: number;
+  closingForTarget: number;
+  annualSalesTarget: number | null;
+  targetAchievementPct: number | null;
+  totalProposals: number;
+  totalProjectWinCount: number;
+  totalHotProspectCount: number;
+  tenderOnProgress: number;
+  series3m: MonthlyQuotePoint[];
+  series12m: MonthlyQuotePoint[];
+  usdPerIdr: number;
+  sgdPerIdr: number;
+  targetCaption?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <CurrencyProvider usdPerIdr={usdPerIdr} sgdPerIdr={sgdPerIdr}>
+      <HeroBody
+        totalPipelineValue={totalPipelineValue}
+        hotProspectValue={hotProspectValue}
+        totalWon={totalWon}
+        closingForTarget={closingForTarget}
+        annualSalesTarget={annualSalesTarget}
+        targetAchievementPct={targetAchievementPct}
+        totalProposals={totalProposals}
+        totalProjectWinCount={totalProjectWinCount}
+        totalHotProspectCount={totalHotProspectCount}
+        tenderOnProgress={tenderOnProgress}
+        series3m={series3m}
+        series12m={series12m}
+        targetCaption={targetCaption}
+      >
+        {children}
+      </HeroBody>
+    </CurrencyProvider>
   );
 }

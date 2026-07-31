@@ -37,24 +37,26 @@ export interface Customer {
   pics?: CustomerPic[];
 }
 
-/** Progress type at project creation / lifecycle stage */
-export const PROGRESS_TYPES = ["Budgetary", "Tender", "BD"] as const;
-/** Shown on Projects menu only (BD has its own page) */
-export const PROJECTS_LIST_PROGRESS_TYPES = ["Budgetary", "Tender"] as const;
-export const PROJECT_TYPES = ["Project", "Trading", "Service"] as const;
+/** Progress type at pipeline creation / lifecycle stage */
+export const PROGRESS_TYPES = ["Budgetary", "Tender"] as const;
+export const PIPELINE_TYPES = ["Project", "Trading", "Service"] as const;
 export const OUTCOME_STATUSES = ["Win", "Lose", "On Hold"] as const;
+/** Heat on a pipeline (Hot vs Normal) — not the Prospects module */
 export const PROSPECT_OPTIONS = ["Hot Prospect", "Normal"] as const;
 export const LIFECYCLE_STATUSES = ["Open", "Closed"] as const;
+/** Pre-quote opportunity statuses */
+export const PROSPECT_STATUSES = ["Open", "Closed", "Converted"] as const;
 
 export type ProgressType = (typeof PROGRESS_TYPES)[number];
-export type ProjectType = (typeof PROJECT_TYPES)[number];
+export type PipelineType = (typeof PIPELINE_TYPES)[number];
 export type OutcomeStatus = (typeof OUTCOME_STATUSES)[number];
 export type ProspectOption = (typeof PROSPECT_OPTIONS)[number];
 export type LifecycleStatus = (typeof LIFECYCLE_STATUSES)[number];
+export type ProspectStatus = (typeof PROSPECT_STATUSES)[number];
 
-export interface ProjectUpdate {
+export interface PipelineUpdate {
   id?: string;
-  project_id: string;
+  pipeline_id: string;
   content: string;
   created_at: string;
   created_by?: string;
@@ -69,31 +71,31 @@ export interface PaymentTermLine {
 
 export interface QuoteRevision {
   id: string;
-  project_id: string;
+  pipeline_id: string;
   revision: number;
   no_quote: string;
   value: number | null;
   price_validity_days: number | null;
   delivery_weeks: number | null;
   payment_terms: PaymentTermLine[];
-  project_name: string | null;
+  pipeline_name: string | null;
   notes: string | null;
   created_at: string;
   created_by?: string | null;
   author_name?: string | null;
 }
 
-export interface Project {
+export interface Pipeline {
   id: string;
   slug?: string | null;
   created_at: string;
   no_quote: string;
   quote_base?: string | null;
   quote_revision?: number;
-  project_name: string;
+  pipeline_name: string;
   customer_id: string;
   value: number;
-  project_type: ProjectType;
+  pipeline_type: PipelineType;
   status: LifecycleStatus;
   progress_type: ProgressType;
   outcome_status?: OutcomeStatus | null;
@@ -107,17 +109,17 @@ export interface Project {
   sales_id: string;
   customer?: Customer;
   sales_name?: string;
-  updates?: ProjectUpdate[];
+  updates?: PipelineUpdate[];
 }
 
-export interface ProjectInsert {
+export interface PipelineInsert {
   no_quote: string;
   quote_base?: string;
   quote_revision?: number;
-  project_name: string;
+  pipeline_name: string;
   customer_id: string;
   value: number;
-  project_type: ProjectType;
+  pipeline_type: PipelineType;
   progress_type: ProgressType;
   prospect: ProspectOption;
   status?: LifecycleStatus;
@@ -128,14 +130,60 @@ export interface ProjectInsert {
   payment_terms?: PaymentTermLine[];
 }
 
-export interface BdWeeklyUpdate {
+export interface ProspectUpdate {
+  id?: string;
+  prospect_id: string;
+  content: string;
+  created_at: string;
+  created_by?: string | null;
+}
+
+export interface Prospect {
   id: string;
-  user_id: string;
-  year: number;
-  week_number: number;
-  customer_id: string | null;
-  content: string | null;
-  created_at?: string;
-  updated_at?: string;
-  customer?: { id: string; name: string } | null;
+  created_at: string;
+  updated_at: string;
+  customer_id: string;
+  title: string;
+  work_description: string | null;
+  pic_name?: string | null;
+  status: ProspectStatus;
+  sales_id: string;
+  latest_update: string | null;
+  customer?: Customer;
+  sales_name?: string | null;
+  updates?: ProspectUpdate[];
+}
+
+export interface ProspectInsert {
+  customer_id: string;
+  title: string;
+  work_description?: string | null;
+  pic_name?: string | null;
+  status?: ProspectStatus;
+  latest_update?: string | null;
+}
+
+export type SalesActivityActionType =
+  | "pipeline_created"
+  | "pipeline_updated"
+  | "pipeline_deleted"
+  | "pipeline_status_changed"
+  | "pipeline_update_added"
+  | "quote_revised"
+  | "prospect_created"
+  | "prospect_updated"
+  | "prospect_deleted"
+  | "prospect_update_added";
+
+export interface SalesActivityLog {
+  id: string;
+  created_at: string;
+  actor_id: string;
+  action_type: SalesActivityActionType | string;
+  entity_type: string | null;
+  entity_id: string | null;
+  entity_label: string | null;
+  summary: string;
+  details: string | null;
+  actor_name?: string | null;
 }

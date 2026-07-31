@@ -30,13 +30,13 @@ export default async function Home() {
             Enercon Sales Tracker
           </h1>
           <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-slate-500">
-            Manage projects, customers, and pipeline performance in one place.
+            Manage pipelines, customers, and sales performance in one place.
           </p>
         </div>
 
         <div className="mt-10 grid w-full gap-3 sm:grid-cols-3">
           {[
-            { icon: FolderKanban, label: "Projects" },
+            { icon: FolderKanban, label: "Pipeline" },
             { icon: Users, label: "Customers" },
             { icon: BarChart3, label: "Analytics" },
           ].map(({ icon: Icon, label }) => (

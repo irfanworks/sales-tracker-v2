@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { format, differenceInCalendarDays, parseISO } from "date-fns";
 import { ExternalLink, X } from "lucide-react";
-import type { DashboardListProject } from "@/lib/dashboard";
+import type { DashboardListPipeline } from "@/lib/dashboard";
+import { useCurrencyScope } from "@/components/ui/CurrencyToggle";
 
 function formatDeadline(dateStr: string | null, highlightOverdue: boolean) {
   if (!dateStr) return <span className="text-slate-400">—</span>;
@@ -39,14 +40,37 @@ function formatDeadline(dateStr: string | null, highlightOverdue: boolean) {
   return <span className="font-medium tabular-nums text-slate-700">{label}</span>;
 }
 
-function DeadlineTable({
+function ValueCell({ value }: { value: number }) {
+  const currencyScope = useCurrencyScope();
+  if (currencyScope) {
+    return (
+      <span className="font-semibold tabular-nums text-slate-800">
+        {currencyScope.format(value)}
+      </span>
+    );
+  }
+  return (
+    <span className="font-semibold tabular-nums text-slate-800">
+      {new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+      }).format(value)}
+    </span>
+  );
+}
+
+function AttentionTable({
   projects,
   emptyLabel,
   highlightOverdue,
+  valueColumn,
 }: {
-  projects: DashboardListProject[];
+  projects: DashboardListPipeline[];
   emptyLabel: string;
   highlightOverdue: boolean;
+  /** When true, show project value instead of deadline */
+  valueColumn?: boolean;
 }) {
   if (projects.length === 0) {
     return <p className="px-4 py-10 text-center text-sm text-slate-500">{emptyLabel}</p>;
@@ -59,7 +83,7 @@ function DeadlineTable({
           <tr className="bg-[#0f2744] text-[11px] font-bold uppercase tracking-wider text-white">
             <th className="px-4 py-3">Project</th>
             <th className="px-4 py-3">Customer</th>
-            <th className="px-4 py-3">Deadline</th>
+            <th className="px-4 py-3">{valueColumn ? "Value" : "Deadline"}</th>
           </tr>
         </thead>
         <tbody>
@@ -75,12 +99,18 @@ function DeadlineTable({
                   href={p.href}
                   className="font-medium text-slate-900 hover:text-cyan-700 hover:underline"
                 >
-                  {p.project_name}
+                  {p.pipeline_name}
                 </Link>
                 <p className="mt-0.5 font-mono text-[11px] text-slate-400">{p.no_quote}</p>
               </td>
               <td className="px-4 py-3 text-slate-600">{p.customer_name}</td>
-              <td className="px-4 py-3">{formatDeadline(p.target_closing_at, highlightOverdue)}</td>
+              <td className="px-4 py-3">
+                {valueColumn ? (
+                  <ValueCell value={p.value} />
+                ) : (
+                  formatDeadline(p.target_closing_at, highlightOverdue)
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -94,12 +124,14 @@ function AttentionModal({
   title,
   projects,
   highlightOverdue,
+  valueColumn,
   onClose,
 }: {
   open: boolean;
   title: string;
-  projects: DashboardListProject[];
+  projects: DashboardListPipeline[];
   highlightOverdue: boolean;
+  valueColumn?: boolean;
   onClose: () => void;
 }) {
   if (!open) return null;
@@ -121,7 +153,7 @@ function AttentionModal({
           <div>
             <h3 className="text-base font-bold uppercase tracking-wide">{title}</h3>
             <p className="mt-0.5 text-xs text-slate-300">
-              {projects.length} Open project{projects.length === 1 ? "" : "s"}
+              {projects.length} Open pipeline{projects.length === 1 ? "" : "s"}
             </p>
           </div>
           <button
@@ -134,10 +166,11 @@ function AttentionModal({
           </button>
         </div>
         <div className="overflow-y-auto">
-          <DeadlineTable
+          <AttentionTable
             projects={projects}
-            emptyLabel="No projects."
+            emptyLabel="No pipelines."
             highlightOverdue={highlightOverdue}
+            valueColumn={valueColumn}
           />
         </div>
       </div>
@@ -151,12 +184,14 @@ function AttentionPanel({
   allProjects,
   emptyLabel,
   highlightOverdue,
+  valueColumn,
 }: {
   title: string;
-  topProjects: DashboardListProject[];
-  allProjects: DashboardListProject[];
+  topProjects: DashboardListPipeline[];
+  allProjects: DashboardListPipeline[];
   emptyLabel: string;
   highlightOverdue: boolean;
+  valueColumn?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -169,10 +204,11 @@ function AttentionPanel({
             {allProjects.length}
           </span>
         </div>
-        <DeadlineTable
+        <AttentionTable
           projects={topProjects}
           emptyLabel={emptyLabel}
           highlightOverdue={highlightOverdue}
+          valueColumn={valueColumn}
         />
         {allProjects.length > 0 && (
           <div className="border-t border-slate-100 px-4 py-2.5">
@@ -192,6 +228,7 @@ function AttentionPanel({
         title={title}
         projects={allProjects}
         highlightOverdue={highlightOverdue}
+        valueColumn={valueColumn}
         onClose={() => setOpen(false)}
       />
     </>
@@ -202,8 +239,8 @@ export function DashboardAttentionTables({
   overdue,
   hotAttention,
 }: {
-  overdue: DashboardListProject[];
-  hotAttention: DashboardListProject[];
+  overdue: DashboardListPipeline[];
+  hotAttention: DashboardListPipeline[];
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
@@ -211,14 +248,15 @@ export function DashboardAttentionTables({
         title="Hot Prospect Project"
         topProjects={hotAttention.slice(0, 5)}
         allProjects={hotAttention}
-        emptyLabel="No hot prospect / tender projects right now."
+        emptyLabel="No hot prospect / tender pipelines right now."
         highlightOverdue={false}
+        valueColumn
       />
       <AttentionPanel
         title="Overdue Project"
         topProjects={overdue.slice(0, 5)}
         allProjects={overdue}
-        emptyLabel="No overdue Open projects."
+        emptyLabel="No overdue Open pipelines."
         highlightOverdue
       />
     </div>

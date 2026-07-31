@@ -13,6 +13,7 @@ import { DashboardHeroLayout } from "@/components/dashboard/DashboardHeroLayout"
 import { DashboardAttentionTables } from "@/components/dashboard/DashboardAttentionTables";
 import { LazyDashboardWorkCharts } from "@/components/dashboard/LazyDashboardWorkCharts";
 import { DashboardUserPicker } from "@/components/dashboard/DashboardUserPicker";
+import { DashboardLatestActivity } from "@/components/dashboard/DashboardLatestActivity";
 import {
   buildMonthlyQuoteSeries,
   buildWorkByCategory,
@@ -20,7 +21,7 @@ import {
   calcDashboardKpis,
   getHotAttentionProjects,
   getOverdueProjects,
-  type DashboardProjectRow,
+  type DashboardPipelineRow,
 } from "@/lib/dashboard";
 import { LayoutDashboard } from "lucide-react";
 
@@ -51,17 +52,17 @@ export default async function DashboardPage({
     : undefined;
 
   let query = supabase
-    .from("projects")
+    .from("pipelines")
     .select(
       `
       id,
       slug,
       created_at,
       no_quote,
-      project_name,
+      pipeline_name,
       customer_id,
       value,
-      project_type,
+      pipeline_type,
       progress_type,
       outcome_status,
       prospect,
@@ -79,7 +80,24 @@ export default async function DashboardPage({
     query = query.eq("sales_id", monitorSalesId);
   }
 
-  const { data: projectsRaw, error } = await query;
+  let activityQuery = supabase
+    .from("sales_activity_log")
+    .select(
+      "id, created_at, actor_id, action_type, entity_type, entity_id, entity_label, summary, details"
+    )
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (!isAdmin && user) {
+    activityQuery = activityQuery.eq("actor_id", user.id);
+  } else if (isAdmin && monitorSalesId) {
+    activityQuery = activityQuery.eq("actor_id", monitorSalesId);
+  }
+
+  const [{ data: projectsRaw, error }, activityResult] = await Promise.all([
+    query,
+    activityQuery,
+  ]);
 
   if (error) {
     return (
@@ -89,7 +107,9 @@ export default async function DashboardPage({
     );
   }
 
-  const projects = (projectsRaw ?? []) as DashboardProjectRow[];
+  const activityRows = activityResult.error ? [] : activityResult.data ?? [];
+
+  const pipelines = (projectsRaw ?? []) as DashboardPipelineRow[];
 
   let annualTarget: number | null = null;
   if (isAdmin && monitorSalesId) {
@@ -102,13 +122,30 @@ export default async function DashboardPage({
       profile?.annual_sales_target != null ? Number(profile.annual_sales_target) : null;
   }
 
-  const kpis = calcDashboardKpis(projects, annualTarget);
-  const series3m = buildMonthlyQuoteSeries(projects, 3);
-  const series12m = buildMonthlyQuoteSeries(projects, 12);
-  const overdue = getOverdueProjects(projects);
-  const hotAttention = getHotAttentionProjects(projects);
-  const byCategory = buildWorkByCategory(projects);
-  const bySector = buildWorkBySector(projects);
+  const kpis = calcDashboardKpis(pipelines, annualTarget);
+  const series3m = buildMonthlyQuoteSeries(pipelines, 3);
+  const series12m = buildMonthlyQuoteSeries(pipelines, 12);
+  const overdue = getOverdueProjects(pipelines);
+  const hotAttention = getHotAttentionProjects(pipelines);
+  const byCategory = buildWorkByCategory(pipelines);
+  const bySector = buildWorkBySector(pipelines);
+
+  const actorIds = [...new Set((activityRows ?? []).map((a) => a.actor_id))];
+  const actorNames: Record<string, string> = {};
+  if (actorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name, full_name")
+      .in("id", actorIds);
+    (profiles ?? []).forEach((p) => {
+      actorNames[p.id] = p.display_name ?? p.full_name ?? "Unknown";
+    });
+  }
+
+  const latestActivity = (activityRows ?? []).map((a) => ({
+    ...a,
+    actor_name: actorNames[a.actor_id] ?? null,
+  }));
 
   const description = isAdmin
     ? monitoredUser
@@ -142,6 +179,10 @@ export default async function DashboardPage({
         closingForTarget={kpis.closingForTarget}
         annualSalesTarget={kpis.annualSalesTarget}
         targetAchievementPct={kpis.targetAchievementPct}
+        totalProposals={kpis.totalProposals}
+        totalProjectWinCount={kpis.totalProjectWinCount}
+        totalHotProspectCount={kpis.totalHotProspectCount}
+        tenderOnProgress={kpis.tenderOnProgress}
         series3m={series3m}
         series12m={series12m}
         usdPerIdr={currencyRates.usdPerIdr}
@@ -153,11 +194,11 @@ export default async function DashboardPage({
               ? `Closing (Won) vs ${monitoredUser.display_name}'s annual target`
               : undefined
         }
-      />
-
-      <DashboardAttentionTables overdue={overdue} hotAttention={hotAttention} />
-
-      <LazyDashboardWorkCharts byCategory={byCategory} bySector={bySector} />
+      >
+        <DashboardAttentionTables overdue={overdue} hotAttention={hotAttention} />
+        <LazyDashboardWorkCharts byCategory={byCategory} bySector={bySector} />
+        <DashboardLatestActivity activities={latestActivity} />
+      </DashboardHeroLayout>
     </div>
   );
 }

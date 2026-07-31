@@ -18,7 +18,8 @@ import {
   validatePaymentTerms,
   type PriceValidityDays,
 } from "@/lib/quoteTerms";
-import { projectDetailPath, projectSlugFor } from "@/lib/projectPaths";
+import { pipelineDetailPath, pipelineSlugFor } from "@/lib/pipelinePaths";
+import { formatIdrShort, logSalesActivity } from "@/lib/salesActivity";
 
 function normalizeTerms(raw: PaymentTermLine[] | null | undefined): PaymentTermLine[] {
   if (!raw || raw.length === 0) return [emptyPaymentTerm()];
@@ -37,7 +38,7 @@ export function QuoteRevisePanel({
     no_quote: string;
     quote_base?: string | null;
     quote_revision?: number | null;
-    project_name: string;
+    pipeline_name: string;
     value: number | null;
     price_validity_days?: number | null;
     delivery_weeks?: number | null;
@@ -118,8 +119,8 @@ export function QuoteRevisePanel({
         is_custom: Boolean(t.is_custom),
       }));
 
-      const { data, error: rpcError } = await supabase.rpc("revise_project_quote", {
-        p_project_id: project.id,
+      const { data, error: rpcError } = await supabase.rpc("revise_pipeline_quote", {
+        p_pipeline_id: project.id,
         p_value: numValue,
         p_price_validity_days: priceValidity,
         p_delivery_weeks: weeks,
@@ -134,19 +135,36 @@ export function QuoteRevisePanel({
 
       const result = data as { no_quote?: string; quote_revision?: number } | null;
       const newNoQuote = result?.no_quote ?? project.no_quote;
-      const slug = projectSlugFor({
+      const slug = pipelineSlugFor({
         id: project.id,
         no_quote: newNoQuote,
-        project_name: project.project_name,
+        pipeline_name: project.pipeline_name,
       });
-      await supabase.from("projects").update({ slug }).eq("id", project.id);
+      await supabase.from("pipelines").update({ slug }).eq("id", project.id);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const oldValue = formatIdrShort(project.value);
+        const newValue = formatIdrShort(numValue);
+        await logSalesActivity(supabase, {
+          actorId: user.id,
+          actionType: "quote_revised",
+          entityType: "pipeline",
+          entityId: project.id,
+          entityLabel: `${newNoQuote} · ${project.pipeline_name}`,
+          summary: `Revised quote on ${project.no_quote} → ${newNoQuote} “${project.pipeline_name}” (${oldValue} → ${newValue})`,
+          details: notes.trim() || `Price validity ${priceValidity} days · Delivery ${weeks} weeks`,
+        });
+      }
 
       setOpen(false);
       router.push(
-        projectDetailPath({
+        pipelineDetailPath({
           id: project.id,
           no_quote: newNoQuote,
-          project_name: project.project_name,
+          pipeline_name: project.pipeline_name,
           slug,
         })
       );

@@ -77,7 +77,7 @@ export function DashboardMetrics({
           <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-sm font-medium uppercase tracking-wide text-slate-600">Total Value Project</p>
             <p className={valueFontClass}>{formatCurrency(toCurrency(totalValueProject))}</p>
-            <p className="mt-1 text-xs text-slate-500">all projects, excluding Lose</p>
+            <p className="mt-1 text-xs text-slate-500">all pipelines, excluding Lose</p>
           </div>
         </div>
         <div className="card flex items-start gap-5 p-6 ring-2 ring-cyan-200/60 bg-cyan-50/30">
@@ -102,14 +102,14 @@ export function DashboardMetrics({
         </div>
       </div>
 
-      {/* Total Projects, Total Budgetary, Total Tender, Total Hot Prospect */}
+      {/* Total Pipelines, Total Budgetary, Total Tender, Total Hot Prospect */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card flex items-center gap-4 p-4">
           <div className="rounded-lg bg-slate-100 p-2.5 text-slate-600 shrink-0">
             <Layers className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total Projects</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Total Pipelines</p>
             <p className="mt-0.5 text-xl font-semibold text-slate-800">{totalProjects}</p>
           </div>
         </div>

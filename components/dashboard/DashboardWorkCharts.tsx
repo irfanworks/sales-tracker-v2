@@ -198,7 +198,7 @@ export function DashboardWorkCharts({
         title="Work by Category"
         subtitle="Share of work by project type"
         data={byCategory}
-        emptyLabel="No projects to chart yet."
+        emptyLabel="No pipelines to chart yet."
       />
       <BreakdownChartPanel
         title="Work by Sector"
