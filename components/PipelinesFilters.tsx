@@ -23,8 +23,8 @@ function FilterField({
   className?: string;
 }) {
   return (
-    <label className={`flex min-w-0 flex-col gap-1.5 ${className}`}>
-      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+    <label className={`flex min-w-0 flex-col gap-1 ${className}`}>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
         {label}
       </span>
       {children}
@@ -33,7 +33,7 @@ function FilterField({
 }
 
 const selectClass =
-  "input-field w-full appearance-none py-2 text-sm font-medium text-slate-800";
+  "input-field w-full appearance-none py-1.5 text-[13px] font-medium text-slate-800";
 
 export function PipelinesFilters({
   progressType,
@@ -55,7 +55,6 @@ export function PipelinesFilters({
   sortBy?: string;
   sortOrder?: string;
   salesOptions: SalesOption[];
-  /** Only Admin can filter by Sales; Sales role sees only their own pipelines */
   showSalesFilter?: boolean;
   showProgressFilter?: boolean;
   progressTypeOptions?: readonly string[];
@@ -72,28 +71,43 @@ export function PipelinesFilters({
     router.push(`${basePath}?${next.toString()}`);
   }
 
-  const activeCount = [
-    showProgressFilter && progressType,
-    prospect,
-    outcomeStatus,
-    showSalesFilter && salesId,
-    sortBy && sortBy !== "date" ? sortBy : null,
-    sortOrder && sortOrder !== "desc" ? sortOrder : null,
-  ].filter(Boolean).length;
+  const salesLabel = salesId
+    ? salesOptions.find((s) => s.id === salesId)?.display_name ?? "Sales"
+    : null;
 
-  const hasFilters = activeCount > 0;
+  const chips: { key: string; label: string; value: string }[] = [];
+  if (showProgressFilter && progressType) {
+    chips.push({ key: "progress_type", label: "Progress", value: progressType });
+  }
+  if (prospect) chips.push({ key: "prospect", label: "Prospect", value: prospect });
+  if (outcomeStatus) chips.push({ key: "outcome_status", label: "Outcome", value: outcomeStatus });
+  if (showSalesFilter && salesId && salesLabel) {
+    chips.push({ key: "sales_id", label: "Sales", value: salesLabel });
+  }
+  if (sortBy && sortBy !== "date") {
+    chips.push({
+      key: "sort_by",
+      label: "Sort",
+      value: sortBy === "target_closing" ? "Target closing" : sortBy,
+    });
+  }
+  if (sortOrder && sortOrder !== "desc") {
+    chips.push({ key: "sort_order", label: "Order", value: "Ascending" });
+  }
+
+  const hasFilters = chips.length > 0;
 
   return (
     <div className="card-elevated overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-4 py-3 sm:px-5">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-cyan-700 shadow-sm ring-1 ring-slate-200/80">
-            <Filter className="h-4 w-4" />
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5 sm:px-4">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-slate-600">
+            <Filter className="h-3.5 w-3.5" />
           </span>
           <div>
-            <p className="text-sm font-semibold text-slate-800">Filters</p>
-            <p className="text-xs text-slate-500">
-              {hasFilters ? `${activeCount} active` : "Refine the pipeline list"}
+            <p className="text-[13px] font-semibold tracking-tight text-slate-800">Filters</p>
+            <p className="text-[11px] text-slate-500">
+              {hasFilters ? `${chips.length} active` : "Refine the list"}
             </p>
           </div>
         </div>
@@ -101,16 +115,34 @@ export function PipelinesFilters({
           <button
             type="button"
             onClick={() => router.push(basePath)}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-white hover:text-slate-900"
+            className="btn-ghost gap-1 px-2 text-[12px] text-slate-600"
           >
             <X className="h-3.5 w-3.5" />
-            Clear all
+            Clear
           </button>
         )}
       </div>
 
+      {hasFilters && (
+        <div className="flex flex-wrap gap-1.5 border-b border-slate-100 bg-slate-50/50 px-4 py-2">
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              className="filter-chip"
+              onClick={() => updateFilter(chip.key, "")}
+              title={`Remove ${chip.label}`}
+            >
+              <span className="text-slate-400">{chip.label}:</span>
+              {chip.value}
+              <X className="h-3 w-3 text-slate-400" />
+            </button>
+          ))}
+        </div>
+      )}
+
       <div
-        className={`grid gap-3 p-4 sm:gap-4 sm:p-5 ${
+        className={`grid gap-3 p-3.5 sm:p-4 ${
           showProgressFilter && showSalesFilter
             ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
             : showSalesFilter || showProgressFilter

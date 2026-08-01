@@ -52,6 +52,7 @@ export function ProspectsTable({
       setError(deleteError.message);
       return;
     }
+    // Prior activity for this prospect is purged by DB trigger (029).
     const {
       data: { user },
     } = await supabase.auth.getUser();

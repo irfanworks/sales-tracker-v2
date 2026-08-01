@@ -277,6 +277,23 @@ export function PipelineForm({
         changes.push(`Target closing → ${targetClosingAt || "cleared"}`);
       }
 
+      const detailPath =
+        backPath ??
+        pipelineDetailPath({
+          id: project.id,
+          no_quote: project.no_quote,
+          pipeline_name: projectName,
+          slug,
+        });
+
+      // No-op save: leave quietly — do not clutter Sales Activity
+      if (changes.length === 0) {
+        setLoading(false);
+        router.push(detailPath);
+        router.refresh();
+        return;
+      }
+
       const { error: updateError } = await supabase
         .from("pipelines")
         .update({
@@ -305,18 +322,10 @@ export function PipelineForm({
         entityId: project.id,
         entityLabel: `${project.no_quote} · ${projectName}`,
         summary: `Edited pipeline ${project.no_quote} “${projectName}”`,
-        details: changes.length > 0 ? changes.join(" · ") : "Saved pipeline details",
+        details: changes.join(" · "),
       });
 
-      router.push(
-        backPath ??
-          pipelineDetailPath({
-            id: project.id,
-            no_quote: project.no_quote,
-            pipeline_name: projectName,
-            slug,
-          })
-      );
+      router.push(detailPath);
     } else {
       const { data: allocated, error: allocError } = await supabase.rpc(
         "allocate_next_quote_number"

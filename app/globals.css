@@ -4,18 +4,19 @@
 
 :root {
   --foreground: #0f172a;
-  --background: #f1f5f9;
+  --background: #f8fafc;
   --card: #ffffff;
   --border: #e2e8f0;
-  --sidebar: #0f172a;
-  --sidebar-hover: #1e293b;
+  --sidebar: #0b1220;
+  --sidebar-hover: #151e2e;
   --accent: #0891b2;
   --accent-hover: #0e7490;
   --accent-muted: #ecfeff;
-  --ring: rgba(8, 145, 178, 0.35);
-  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.06);
-  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08);
-  --shadow-elevated: 0 4px 6px rgba(15, 23, 42, 0.04), 0 16px 40px rgba(15, 23, 42, 0.12);
+  --ring: rgba(8, 145, 178, 0.28);
+  /* Hairline elevation — Linear/Vercel style over heavy drop shadows */
+  --shadow-soft: 0 1px 0 rgba(15, 23, 42, 0.03);
+  --shadow-card: 0 1px 0 rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-elevated: 0 1px 0 rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.08);
   --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -30,11 +31,12 @@
   body {
     color: var(--foreground);
     background: var(--background);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    letter-spacing: -0.011em;
   }
 
   ::selection {
-    background: rgba(8, 145, 178, 0.2);
+    background: rgba(8, 145, 178, 0.18);
     color: var(--foreground);
   }
 }
@@ -42,65 +44,64 @@
 @layer components {
   .app-shell-bg {
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(8, 145, 178, 0.08), transparent),
-      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(99, 102, 241, 0.05), transparent),
+      radial-gradient(ellipse 70% 45% at 50% -15%, rgba(8, 145, 178, 0.07), transparent 60%),
       var(--background);
   }
 
   .input-field {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-slate-800 shadow-sm outline-none placeholder:text-slate-400;
-    transition: border-color 0.25s var(--ease-premium), box-shadow 0.25s var(--ease-premium),
-      transform 0.2s var(--ease-premium);
-    @apply focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20;
+    @apply w-full rounded-lg border border-slate-200/90 bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400;
+    box-shadow: var(--shadow-soft);
+    transition: border-color 0.15s var(--ease-premium), box-shadow 0.15s var(--ease-premium);
+    @apply focus:border-cyan-500/70 focus:ring-1 focus:ring-cyan-500/40;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-cyan-600 to-cyan-700 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-cyan-900/15;
-    transition: transform 0.22s var(--ease-premium), box-shadow 0.22s var(--ease-premium),
-      filter 0.22s var(--ease-premium), background 0.22s var(--ease-premium);
-    @apply hover:from-cyan-500 hover:to-cyan-600 hover:shadow-lg hover:shadow-cyan-900/20 active:scale-[0.97];
-    @apply focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-700 px-3.5 py-2 text-sm font-semibold text-white;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 1px 2px rgba(8, 145, 178, 0.25);
+    transition: background-color 0.15s var(--ease-premium), box-shadow 0.15s var(--ease-premium),
+      transform 0.15s var(--ease-premium);
+    @apply hover:bg-cyan-600 active:scale-[0.98];
+    @apply focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:ring-offset-1 disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm;
-    transition: transform 0.22s var(--ease-premium), border-color 0.22s var(--ease-premium),
-      background-color 0.22s var(--ease-premium), box-shadow 0.22s var(--ease-premium);
-    @apply hover:border-slate-300 hover:bg-slate-50 active:scale-[0.97];
-    @apply focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200/90 bg-white px-3.5 py-2 text-sm font-medium text-slate-700;
+    box-shadow: var(--shadow-soft);
+    transition: border-color 0.15s var(--ease-premium), background-color 0.15s var(--ease-premium),
+      transform 0.15s var(--ease-premium);
+    @apply hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98];
+    @apply focus:outline-none focus:ring-1 focus:ring-cyan-500/40 focus:ring-offset-1 disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-slate-600;
-    transition: transform 0.2s var(--ease-premium), background-color 0.2s var(--ease-premium),
-      color 0.2s var(--ease-premium);
-    @apply hover:bg-slate-100 hover:text-slate-900 active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium text-slate-600;
+    transition: background-color 0.15s var(--ease-premium), color 0.15s var(--ease-premium),
+      transform 0.15s var(--ease-premium);
+    @apply hover:bg-slate-100/80 hover:text-slate-900 active:scale-[0.98];
   }
 
   .card {
-    @apply rounded-2xl border border-slate-200/80 bg-white;
+    @apply rounded-xl border border-slate-200/70 bg-white;
     box-shadow: var(--shadow-soft);
-    transition: box-shadow 0.3s var(--ease-premium), border-color 0.3s var(--ease-premium),
-      transform 0.3s var(--ease-premium);
+    transition: border-color 0.15s var(--ease-premium), box-shadow 0.15s var(--ease-premium);
   }
 
   .card-elevated {
-    @apply rounded-2xl border border-slate-200/60 bg-white;
+    @apply rounded-xl border border-slate-200/70 bg-white;
     box-shadow: var(--shadow-card);
-    transition: box-shadow 0.3s var(--ease-premium), transform 0.3s var(--ease-premium);
   }
 
   .card-interactive {
-    @apply card hover:border-slate-300/80 hover:-translate-y-0.5;
-    box-shadow: var(--shadow-soft);
+    @apply card;
   }
 
   .card-interactive:hover {
+    @apply border-slate-300/80;
     box-shadow: var(--shadow-card);
   }
 
   .page-container {
-    @apply mx-auto w-full max-w-7xl space-y-6 sm:space-y-8;
+    @apply mx-auto w-full max-w-[1400px] space-y-5 sm:space-y-6;
   }
 
   .table-shell {
@@ -108,48 +109,60 @@
   }
 
   .table-header-row {
-    @apply border-b border-slate-200/80 bg-slate-50/90 text-xs font-semibold uppercase tracking-wider text-slate-500;
+    @apply sticky top-0 z-[1] border-b border-slate-200/70 bg-slate-50/95 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500 backdrop-blur-sm;
   }
 
   .table-row {
-    @apply border-b border-slate-100;
-    transition: background-color 0.18s var(--ease-premium), transform 0.18s var(--ease-premium);
+    @apply border-b border-slate-100/90;
+    transition: background-color 0.12s var(--ease-premium);
   }
 
   .table-row:hover {
-    @apply bg-slate-50/70;
+    @apply bg-slate-50/80;
   }
 
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide;
-    transition: transform 0.2s var(--ease-spring), filter 0.2s var(--ease-premium);
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide;
   }
 
   .nav-link {
-    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium;
-    transition: background-color 0.22s var(--ease-premium), color 0.22s var(--ease-premium),
-      transform 0.22s var(--ease-premium), box-shadow 0.22s var(--ease-premium);
+    @apply relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium;
+    transition: background-color 0.15s var(--ease-premium), color 0.15s var(--ease-premium);
   }
 
   .nav-link-active {
-    @apply bg-white/10 text-white shadow-inner;
+    @apply bg-white/[0.08] text-white;
+  }
+
+  .nav-link-active::before {
+    content: "";
+    @apply absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-cyan-400;
   }
 
   .nav-link-inactive {
-    @apply text-slate-400 hover:bg-white/5 hover:text-white;
+    @apply text-slate-400 hover:bg-white/[0.04] hover:text-slate-200;
+  }
+
+  .filter-chip {
+    @apply inline-flex items-center gap-1 rounded-md border border-slate-200/80 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700;
+    transition: background-color 0.12s var(--ease-premium), border-color 0.12s var(--ease-premium);
+  }
+
+  .filter-chip:hover {
+    @apply border-slate-300 bg-white;
   }
 
   .shimmer {
-    @apply relative overflow-hidden bg-slate-200/80;
+    @apply relative overflow-hidden bg-slate-200/70;
   }
 
   .shimmer::after {
     content: "";
-    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/60 to-transparent;
+    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/55 to-transparent;
   }
 
   .glass-header {
-    @apply border-b border-slate-200/70 bg-white/80 backdrop-blur-xl backdrop-saturate-150;
+    @apply border-b border-slate-200/60 bg-white/75 backdrop-blur-xl backdrop-saturate-150;
   }
 
   .main-view-transition {
@@ -161,15 +174,15 @@
   }
 
   .page-stagger > * {
-    animation: stagger-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation: stagger-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
 
-  .page-stagger > *:nth-child(1) { animation-delay: 0.03s; }
-  .page-stagger > *:nth-child(2) { animation-delay: 0.07s; }
-  .page-stagger > *:nth-child(3) { animation-delay: 0.11s; }
-  .page-stagger > *:nth-child(4) { animation-delay: 0.15s; }
-  .page-stagger > *:nth-child(5) { animation-delay: 0.19s; }
-  .page-stagger > *:nth-child(6) { animation-delay: 0.23s; }
+  .page-stagger > *:nth-child(1) { animation-delay: 0.02s; }
+  .page-stagger > *:nth-child(2) { animation-delay: 0.05s; }
+  .page-stagger > *:nth-child(3) { animation-delay: 0.08s; }
+  .page-stagger > *:nth-child(4) { animation-delay: 0.11s; }
+  .page-stagger > *:nth-child(5) { animation-delay: 0.14s; }
+  .page-stagger > *:nth-child(6) { animation-delay: 0.17s; }
 }
 
 @layer utilities {
@@ -187,22 +200,21 @@
   }
 
   .motion-safe\:animate-page-enter {
-    animation: page-enter 0.45s var(--ease-premium) backwards;
+    animation: page-enter 0.35s var(--ease-premium) backwards;
   }
 }
 
-/* ── View Transitions API (crisp, no costly blur) ── */
 ::view-transition-old(main-content) {
-  animation: vt-exit 0.2s var(--ease-exit) both;
+  animation: vt-exit 0.18s var(--ease-exit) both;
 }
 
 ::view-transition-new(main-content) {
-  animation: vt-enter 0.36s var(--ease-premium) both;
+  animation: vt-enter 0.28s var(--ease-premium) both;
 }
 
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 0.28s;
+  animation-duration: 0.22s;
 }
 
 @keyframes vt-exit {
@@ -212,14 +224,14 @@
   }
   to {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-3px);
   }
 }
 
 @keyframes vt-enter {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -230,7 +242,7 @@
 @keyframes stagger-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -241,11 +253,11 @@
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(16px) scale(0.98);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 

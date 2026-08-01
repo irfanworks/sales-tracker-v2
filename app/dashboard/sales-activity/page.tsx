@@ -87,8 +87,8 @@ export default async function SalesActivityPage({
         title="Sales Activity"
         description={
           isAdmin
-            ? "Live feed of what the sales team is doing — pipelines, prospects, updates, and quote changes."
-            : "Your activity log — everything you create or update appears here automatically."
+            ? "Weekly review feed for Direksi — only real creates and changes (empty saves are ignored)."
+            : "Your activity log — only when you add or change data."
         }
       />
       <Suspense fallback={<div className="card shimmer h-24 rounded-2xl" />}>
@@ -101,10 +101,11 @@ export default async function SalesActivityPage({
         />
       </Suspense>
       <p className="text-sm text-slate-500">
-        Showing {feed.length} {feed.length === 1 ? "entry" : "entries"} from{" "}
-        <span className="font-medium text-slate-700">{from}</span> to{" "}
-        <span className="font-medium text-slate-700">{to}</span>
-        {!isAdmin ? " (your activity only)" : ""}.
+        Reviewing{" "}
+        <span className="font-semibold text-slate-800">{from}</span>
+        {" → "}
+        <span className="font-semibold text-slate-800">{to}</span>
+        {!isAdmin ? " · your actions only" : ""}.
       </p>
       <SalesActivityFeed activities={feed} />
     </div>

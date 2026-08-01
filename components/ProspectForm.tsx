@@ -141,6 +141,14 @@ export function ProspectForm({
       }
       if (prospect.status !== status) changes.push(`Status → ${status}`);
 
+      // No-op save: leave quietly — do not clutter Sales Activity
+      if (changes.length === 0) {
+        setLoading(false);
+        router.push(`/dashboard/prospects/${prospect.id}`);
+        router.refresh();
+        return;
+      }
+
       const { error: updateError } = await supabase
         .from("prospects")
         .update({
@@ -165,7 +173,7 @@ export function ProspectForm({
         entityId: prospect.id,
         entityLabel: trimmedTitle,
         summary: `Edited prospect “${trimmedTitle}” (${customerName})`,
-        details: changes.length > 0 ? changes.join(" · ") : "Saved prospect details",
+        details: changes.join(" · "),
       });
 
       router.push(`/dashboard/prospects/${prospect.id}`);

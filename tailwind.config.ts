@@ -8,6 +8,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      boxShadow: {
+        soft: "0 1px 0 rgba(15, 23, 42, 0.03)",
+        card: "0 1px 0 rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.04)",
+        elevated: "0 1px 0 rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.08)",
+      },
       colors: {
         primary: {
           50: "#f0f4f8",
@@ -27,19 +32,10 @@ const config: Config = {
           muted: "#ecfeff",
         },
         sidebar: {
-          DEFAULT: "#0f172a",
-          hover: "#1e293b",
-          border: "#1e293b",
+          DEFAULT: "#0b1220",
+          hover: "#151e2e",
+          border: "#151e2e",
         },
-      },
-      fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "monospace"],
-      },
-      boxShadow: {
-        soft: "0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.06)",
-        card: "0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08)",
-        elevated: "0 4px 6px rgba(15, 23, 42, 0.04), 0 16px 40px rgba(15, 23, 42, 0.12)",
       },
       transitionTimingFunction: {
         premium: "cubic-bezier(0.16, 1, 0.3, 1)",

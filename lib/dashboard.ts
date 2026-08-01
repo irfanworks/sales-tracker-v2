@@ -113,9 +113,6 @@ export function calcDashboardKpis(
 
   const totalProposals = projects.length;
   const totalProjectWinCount = wonPipelines.length;
-  const totalHotProspectCount = projects.filter(
-    (p) => p.prospect === "Hot Prospect" && !isExcludedFromQuotedValue(p.outcome_status)
-  ).length;
   const tenderOnProgress = projects.filter(
     (p) => p.progress_type === "Tender" && (p.status ?? "Open") === "Open"
   ).length;
@@ -133,43 +130,88 @@ export function calcDashboardKpis(
     targetAchievementPct,
     totalProposals,
     totalProjectWinCount,
-    totalHotProspectCount,
     tenderOnProgress,
   };
 }
 
-export type MonthlyQuotePoint = {
+export type DailyQuotePoint = {
   key: string;
   label: string;
-  /** Quotes / pipelines created that month */
+  /** Short day label e.g. "1" or "Mon 1" */
+  dayLabel: string;
   count: number;
-  /** Pipelines with Win outcome attributed to that month (by created_at) */
-  wins: number;
 };
 
-export function buildMonthlyQuoteSeries(
-  projects: DashboardPipelineRow[],
-  monthsBack: 3 | 12
-): MonthlyQuotePoint[] {
-  const now = new Date();
-  const buckets: MonthlyQuotePoint[] = [];
+export type MonthlyWinPoint = {
+  key: string;
+  /** Short month e.g. Jan */
+  label: string;
+  /** Full month e.g. January */
+  fullLabel: string;
+  wins: number;
+  value: number;
+};
 
-  for (let i = monthsBack - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleString("en-US", { month: "short", year: "2-digit" });
-    buckets.push({ key, label, count: 0, wins: 0 });
+/** Daily quote submissions for the last `daysBack` calendar days (inclusive of today). */
+export function buildDailyQuoteSeries(
+  projects: DashboardPipelineRow[],
+  daysBack: number
+): DailyQuotePoint[] {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const buckets: DailyQuotePoint[] = [];
+
+  for (let i = daysBack - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const label = d.toLocaleString("en-US", { month: "short", day: "numeric" });
+    const dayLabel = String(d.getDate());
+    buckets.push({ key, label, dayLabel, count: 0 });
   }
 
   const bucketMap = new Map(buckets.map((b) => [b.key, b]));
 
   for (const p of projects) {
     const created = new Date(p.created_at);
-    const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
+    const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}-${String(created.getDate()).padStart(2, "0")}`;
     const bucket = bucketMap.get(key);
     if (!bucket) continue;
     bucket.count += 1;
-    if (p.outcome_status === "Win") bucket.wins += 1;
+  }
+
+  return buckets;
+}
+
+/** Pipeline wins per month for a calendar year (January – December). */
+export function buildYearlyMonthlyWinsSeries(
+  projects: DashboardPipelineRow[],
+  year: number = new Date().getFullYear()
+): MonthlyWinPoint[] {
+  const buckets: MonthlyWinPoint[] = [];
+  for (let month = 0; month < 12; month++) {
+    const d = new Date(year, month, 1);
+    const key = `${year}-${String(month + 1).padStart(2, "0")}`;
+    buckets.push({
+      key,
+      label: d.toLocaleString("en-US", { month: "short" }),
+      fullLabel: d.toLocaleString("en-US", { month: "long" }),
+      wins: 0,
+      value: 0,
+    });
+  }
+
+  const bucketMap = new Map(buckets.map((b) => [b.key, b]));
+
+  for (const p of projects) {
+    if (p.outcome_status !== "Win") continue;
+    const created = new Date(p.created_at);
+    if (created.getFullYear() !== year) continue;
+    const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
+    const bucket = bucketMap.get(key);
+    if (!bucket) continue;
+    bucket.wins += 1;
+    bucket.value += Number(p.value ?? 0);
   }
 
   return buckets;

@@ -47,6 +47,31 @@ export async function logSalesActivity(
   }
 }
 
+/**
+ * Remove all prior activity rows for an entity (client helper).
+ * Primary path is DB trigger 029 on pipelines/prospects DELETE.
+ */
+export async function purgeSalesActivityForEntity(
+  supabase: SupabaseClient,
+  entityType: SalesActivityEntityType,
+  entityIds: string | string[]
+): Promise<void> {
+  const ids = Array.isArray(entityIds) ? entityIds : [entityIds];
+  if (ids.length === 0) return;
+  try {
+    const { error } = await supabase
+      .from("sales_activity_log")
+      .delete()
+      .eq("entity_type", entityType)
+      .in("entity_id", ids);
+    if (error) {
+      console.error("sales_activity_log purge failed:", error.message);
+    }
+  } catch (err) {
+    console.error("sales_activity_log purge failed:", err);
+  }
+}
+
 export function formatIdrShort(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "—";
   return new Intl.NumberFormat("id-ID", {
@@ -65,13 +90,27 @@ export function clipText(text: string, max = 160): string {
 
 export const SALES_ACTIVITY_ACTION_LABELS: Record<SalesActivityActionType, string> = {
   pipeline_created: "New pipeline",
-  pipeline_updated: "Pipeline edited",
-  pipeline_deleted: "Pipeline deleted",
-  pipeline_status_changed: "Pipeline status",
-  pipeline_update_added: "Pipeline update",
+  pipeline_updated: "Edited pipeline",
+  pipeline_deleted: "Deleted pipeline",
+  pipeline_status_changed: "Status change",
+  pipeline_update_added: "Progress note",
   quote_revised: "Quote revised",
   prospect_created: "New prospect",
-  prospect_updated: "Prospect edited",
-  prospect_deleted: "Prospect deleted",
-  prospect_update_added: "Prospect update",
+  prospect_updated: "Edited prospect",
+  prospect_deleted: "Deleted prospect",
+  prospect_update_added: "Progress note",
+};
+
+/** Verb tone for directors scanning the feed */
+export const SALES_ACTIVITY_ACTION_VERB: Record<SalesActivityActionType, string> = {
+  pipeline_created: "Created",
+  pipeline_updated: "Changed",
+  pipeline_deleted: "Deleted",
+  pipeline_status_changed: "Status",
+  pipeline_update_added: "Noted",
+  quote_revised: "Revised",
+  prospect_created: "Created",
+  prospect_updated: "Changed",
+  prospect_deleted: "Deleted",
+  prospect_update_added: "Noted",
 };

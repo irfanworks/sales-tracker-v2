@@ -15,9 +15,10 @@ import { LazyDashboardWorkCharts } from "@/components/dashboard/LazyDashboardWor
 import { DashboardUserPicker } from "@/components/dashboard/DashboardUserPicker";
 import { DashboardLatestActivity } from "@/components/dashboard/DashboardLatestActivity";
 import {
-  buildMonthlyQuoteSeries,
+  buildDailyQuoteSeries,
   buildWorkByCategory,
   buildWorkBySector,
+  buildYearlyMonthlyWinsSeries,
   calcDashboardKpis,
   getHotAttentionProjects,
   getOverdueProjects,
@@ -94,9 +95,22 @@ export default async function DashboardPage({
     activityQuery = activityQuery.eq("actor_id", monitorSalesId);
   }
 
-  const [{ data: projectsRaw, error }, activityResult] = await Promise.all([
+  // Open prospects currently being worked on (Prospects module — not Hot Prospect pipelines)
+  let prospectsCountQuery = supabase
+    .from("prospects")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "Open");
+
+  if (!isAdmin && user) {
+    prospectsCountQuery = prospectsCountQuery.eq("sales_id", user.id);
+  } else if (isAdmin && monitorSalesId) {
+    prospectsCountQuery = prospectsCountQuery.eq("sales_id", monitorSalesId);
+  }
+
+  const [{ data: projectsRaw, error }, activityResult, prospectsCountResult] = await Promise.all([
     query,
     activityQuery,
+    prospectsCountQuery,
   ]);
 
   if (error) {
@@ -108,6 +122,9 @@ export default async function DashboardPage({
   }
 
   const activityRows = activityResult.error ? [] : activityResult.data ?? [];
+  const totalProspectsCount = prospectsCountResult.error
+    ? 0
+    : prospectsCountResult.count ?? 0;
 
   const pipelines = (projectsRaw ?? []) as DashboardPipelineRow[];
 
@@ -123,8 +140,11 @@ export default async function DashboardPage({
   }
 
   const kpis = calcDashboardKpis(pipelines, annualTarget);
-  const series3m = buildMonthlyQuoteSeries(pipelines, 3);
-  const series12m = buildMonthlyQuoteSeries(pipelines, 12);
+  const winsYear = new Date().getFullYear();
+  const quoteSeries7d = buildDailyQuoteSeries(pipelines, 7);
+  const quoteSeries14d = buildDailyQuoteSeries(pipelines, 14);
+  const quoteSeries30d = buildDailyQuoteSeries(pipelines, 30);
+  const winsSeries = buildYearlyMonthlyWinsSeries(pipelines, winsYear);
   const overdue = getOverdueProjects(pipelines);
   const hotAttention = getHotAttentionProjects(pipelines);
   const byCategory = buildWorkByCategory(pipelines);
@@ -181,10 +201,13 @@ export default async function DashboardPage({
         targetAchievementPct={kpis.targetAchievementPct}
         totalProposals={kpis.totalProposals}
         totalProjectWinCount={kpis.totalProjectWinCount}
-        totalHotProspectCount={kpis.totalHotProspectCount}
+        totalProspectsCount={totalProspectsCount}
         tenderOnProgress={kpis.tenderOnProgress}
-        series3m={series3m}
-        series12m={series12m}
+        quoteSeries7d={quoteSeries7d}
+        quoteSeries14d={quoteSeries14d}
+        quoteSeries30d={quoteSeries30d}
+        winsSeries={winsSeries}
+        winsYear={winsYear}
         usdPerIdr={currencyRates.usdPerIdr}
         sgdPerIdr={currencyRates.sgdPerIdr}
         targetCaption={

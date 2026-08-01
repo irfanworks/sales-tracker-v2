@@ -7,9 +7,10 @@ import {
 } from "@/components/ui/CurrencyToggle";
 import { DashboardSummaryCard } from "@/components/dashboard/DashboardSummaryCard";
 import { DashboardCountCards } from "@/components/dashboard/DashboardCountCards";
-import { TargetDonutCard } from "@/components/dashboard/TargetDonutCard";
+import { DashboardTargetBanner } from "@/components/dashboard/DashboardTargetBanner";
 import { LazyQuoteSubmittedChart } from "@/components/dashboard/LazyQuoteSubmittedChart";
-import type { MonthlyQuotePoint } from "@/lib/dashboard";
+import { LazyPipelineWinsChart } from "@/components/dashboard/LazyPipelineWinsChart";
+import type { DailyQuotePoint, MonthlyWinPoint } from "@/lib/dashboard";
 
 function HeroBody({
   totalPipelineValue,
@@ -20,10 +21,13 @@ function HeroBody({
   targetAchievementPct,
   totalProposals,
   totalProjectWinCount,
-  totalHotProspectCount,
+  totalProspectsCount,
   tenderOnProgress,
-  series3m,
-  series12m,
+  quoteSeries7d,
+  quoteSeries14d,
+  quoteSeries30d,
+  winsSeries,
+  winsYear,
   targetCaption,
   children,
 }: {
@@ -35,10 +39,13 @@ function HeroBody({
   targetAchievementPct: number | null;
   totalProposals: number;
   totalProjectWinCount: number;
-  totalHotProspectCount: number;
+  totalProspectsCount: number;
   tenderOnProgress: number;
-  series3m: MonthlyQuotePoint[];
-  series12m: MonthlyQuotePoint[];
+  quoteSeries7d: DailyQuotePoint[];
+  quoteSeries14d: DailyQuotePoint[];
+  quoteSeries30d: DailyQuotePoint[];
+  winsSeries: MonthlyWinPoint[];
+  winsYear: number;
   targetCaption?: string;
   children?: React.ReactNode;
 }) {
@@ -53,13 +60,25 @@ function HeroBody({
         <CurrencyToggle value={currency} onChange={setCurrency} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Full-width target banner (3×1 above KPI row) */}
+      <DashboardTargetBanner
+        closingForTarget={closingForTarget}
+        annualSalesTarget={annualSalesTarget}
+        targetAchievementPct={targetAchievementPct}
+        currency={currency}
+        usdPerIdr={usdPerIdr}
+        sgdPerIdr={sgdPerIdr}
+        caption={targetCaption}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3 sm:gap-5">
         <DashboardSummaryCard
           label="Total Pipeline"
           valueIdr={totalPipelineValue}
           currency={currency}
           usdPerIdr={usdPerIdr}
           sgdPerIdr={sgdPerIdr}
+          variant="pipeline"
         />
         <DashboardSummaryCard
           label="Hot Prospect"
@@ -67,6 +86,7 @@ function HeroBody({
           currency={currency}
           usdPerIdr={usdPerIdr}
           sgdPerIdr={sgdPerIdr}
+          variant="hot"
         />
         <DashboardSummaryCard
           label="Project Won"
@@ -74,35 +94,24 @@ function HeroBody({
           currency={currency}
           usdPerIdr={usdPerIdr}
           sgdPerIdr={sgdPerIdr}
+          variant="won"
         />
       </div>
 
       <DashboardCountCards
         totalProposals={totalProposals}
         totalProjectWinCount={totalProjectWinCount}
-        totalHotProspectCount={totalHotProspectCount}
+        totalProspectsCount={totalProspectsCount}
         tenderOnProgress={tenderOnProgress}
       />
 
-      <div className="grid gap-4 lg:grid-cols-3 lg:gap-5">
-        <div className="lg:col-span-1">
-          <TargetDonutCard
-            closingForTarget={closingForTarget}
-            annualSalesTarget={annualSalesTarget}
-            targetAchievementPct={targetAchievementPct}
-            currency={currency}
-            usdPerIdr={usdPerIdr}
-            sgdPerIdr={sgdPerIdr}
-            caption={targetCaption}
-          />
-        </div>
-        <div className="lg:col-span-2">
-          <LazyQuoteSubmittedChart
-            series3m={series3m}
-            series12m={series12m}
-            fillHeight
-          />
-        </div>
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
+        <LazyQuoteSubmittedChart
+          series7d={quoteSeries7d}
+          series14d={quoteSeries14d}
+          series30d={quoteSeries30d}
+        />
+        <LazyPipelineWinsChart series={winsSeries} year={winsYear} />
       </div>
 
       {children}
@@ -119,10 +128,13 @@ export function DashboardHeroLayout({
   targetAchievementPct,
   totalProposals,
   totalProjectWinCount,
-  totalHotProspectCount,
+  totalProspectsCount,
   tenderOnProgress,
-  series3m,
-  series12m,
+  quoteSeries7d,
+  quoteSeries14d,
+  quoteSeries30d,
+  winsSeries,
+  winsYear,
   usdPerIdr,
   sgdPerIdr,
   targetCaption,
@@ -136,10 +148,13 @@ export function DashboardHeroLayout({
   targetAchievementPct: number | null;
   totalProposals: number;
   totalProjectWinCount: number;
-  totalHotProspectCount: number;
+  totalProspectsCount: number;
   tenderOnProgress: number;
-  series3m: MonthlyQuotePoint[];
-  series12m: MonthlyQuotePoint[];
+  quoteSeries7d: DailyQuotePoint[];
+  quoteSeries14d: DailyQuotePoint[];
+  quoteSeries30d: DailyQuotePoint[];
+  winsSeries: MonthlyWinPoint[];
+  winsYear: number;
   usdPerIdr: number;
   sgdPerIdr: number;
   targetCaption?: string;
@@ -156,10 +171,13 @@ export function DashboardHeroLayout({
         targetAchievementPct={targetAchievementPct}
         totalProposals={totalProposals}
         totalProjectWinCount={totalProjectWinCount}
-        totalHotProspectCount={totalHotProspectCount}
+        totalProspectsCount={totalProspectsCount}
         tenderOnProgress={tenderOnProgress}
-        series3m={series3m}
-        series12m={series12m}
+        quoteSeries7d={quoteSeries7d}
+        quoteSeries14d={quoteSeries14d}
+        quoteSeries30d={quoteSeries30d}
+        winsSeries={winsSeries}
+        winsYear={winsYear}
         targetCaption={targetCaption}
       >
         {children}

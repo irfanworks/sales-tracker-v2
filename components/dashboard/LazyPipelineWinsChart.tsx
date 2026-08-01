@@ -4,9 +4,9 @@ import dynamic from "next/dynamic";
 import type { ComponentProps } from "react";
 import { ChartSkeleton } from "@/components/ui/Skeleton";
 
-const QuoteSubmittedChart = dynamic(
+const PipelineWinsChart = dynamic(
   () =>
-    import("@/components/dashboard/QuoteSubmittedChart").then((m) => m.QuoteSubmittedChart),
+    import("@/components/dashboard/PipelineWinsChart").then((m) => m.PipelineWinsChart),
   {
     loading: () => (
       <div className="flex h-full min-h-[280px] items-stretch">
@@ -18,8 +18,6 @@ const QuoteSubmittedChart = dynamic(
   }
 );
 
-export function LazyQuoteSubmittedChart(
-  props: ComponentProps<typeof QuoteSubmittedChart>
-) {
-  return <QuoteSubmittedChart {...props} />;
+export function LazyPipelineWinsChart(props: ComponentProps<typeof PipelineWinsChart>) {
+  return <PipelineWinsChart {...props} />;
 }

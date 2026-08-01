@@ -68,15 +68,15 @@ export function Header({ user, profile, onMenuClick }: HeaderProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <div className="hidden items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-1.5 sm:flex">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-700 text-white">
-              <User className="h-3.5 w-3.5" />
+          <div className="hidden items-center gap-2 rounded-lg border border-slate-200/70 bg-white/80 px-2.5 py-1 sm:flex">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-900 text-white">
+              <User className="h-3 w-3" />
             </div>
-            <span className="max-w-[140px] truncate text-sm font-medium text-slate-700 lg:max-w-[200px]">
+            <span className="max-w-[140px] truncate text-[13px] font-medium tracking-tight text-slate-700 lg:max-w-[200px]">
               {displayName}
             </span>
             {profile?.role && (
-              <span className="rounded-md bg-slate-200/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                 {profile.role}
               </span>
             )}

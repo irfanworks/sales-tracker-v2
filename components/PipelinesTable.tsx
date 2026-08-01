@@ -93,6 +93,7 @@ export function PipelinesTable({
       setError(deleteError.message);
       return;
     }
+    // Prior activity for this pipeline is purged by DB trigger (029).
     const {
       data: { user },
     } = await supabase.auth.getUser();
