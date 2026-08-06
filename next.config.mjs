@@ -5,7 +5,11 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
-  serverExternalPackages: ["xlsx"],
+  serverExternalPackages: ["xlsx", "docxtemplater", "pizzip"],
+  // Ensure quotation Word template is bundled for serverless runtimes
+  outputFileTracingIncludes: {
+    "/api/pipelines/[id]/quotation": ["./templates/quotation/**/*"],
+  },
   async redirects() {
     return [
       { source: "/dashboard/projects", destination: "/dashboard/pipeline", permanent: true },

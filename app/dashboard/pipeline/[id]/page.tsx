@@ -6,6 +6,7 @@ import { PipelineForm } from "@/components/PipelineForm";
 import { PipelineUpdatesSection } from "@/components/PipelineUpdatesSection";
 import { QuoteRevisePanel } from "@/components/QuoteRevisePanel";
 import { QuoteRevisionsHistory } from "@/components/QuoteRevisionsHistory";
+import { DownloadQuotationButton } from "@/components/DownloadQuotationButton";
 import { ProgressBadge } from "@/components/ProgressBadge";
 import { ProspectBadge } from "@/components/ProspectBadge";
 import { OutcomeBadge } from "@/components/OutcomeBadge";
@@ -244,20 +245,23 @@ export default async function ProjectDetailPage({
             title={project.pipeline_name}
             description={`${project.no_quote} · Created ${format(new Date(project.created_at), "dd MMM yyyy")}`}
             actions={
-              <QuoteRevisePanel
-                project={{
-                  id: project.id,
-                  no_quote: project.no_quote,
-                  quote_base: project.quote_base,
-                  quote_revision: project.quote_revision ?? 0,
-                  pipeline_name: project.pipeline_name,
-                  value: project.value != null ? Number(project.value) : null,
-                  price_validity_days: project.price_validity_days,
-                  delivery_weeks: project.delivery_weeks,
-                  payment_terms: paymentTerms,
-                  slug: canonicalSlug,
-                }}
-              />
+              <>
+                <DownloadQuotationButton pipelineIdOrSlug={canonicalSlug} />
+                <QuoteRevisePanel
+                  project={{
+                    id: project.id,
+                    no_quote: project.no_quote,
+                    quote_base: project.quote_base,
+                    quote_revision: project.quote_revision ?? 0,
+                    pipeline_name: project.pipeline_name,
+                    value: project.value != null ? Number(project.value) : null,
+                    price_validity_days: project.price_validity_days,
+                    delivery_weeks: project.delivery_weeks,
+                    payment_terms: paymentTerms,
+                    slug: canonicalSlug,
+                  }}
+                />
+              </>
             }
           />
 
