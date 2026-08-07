@@ -39,10 +39,14 @@ export function DashboardTargetBanner({
   };
 
   const hasTarget = annualSalesTarget != null && annualSalesTarget > 0;
-  const pct = hasTarget ? Math.min(100, Math.max(0, targetAchievementPct ?? 0)) : 0;
+  const rawPct = hasTarget ? Math.max(0, targetAchievementPct ?? 0) : 0;
+  const pct = rawPct;
+  const barWidthPct = Math.min(100, Math.max(rawPct > 0 ? 2 : 0, rawPct));
   const closing = toCurrency(closingForTarget);
   const target = hasTarget ? toCurrency(annualSalesTarget!) : 0;
   const remaining = hasTarget ? Math.max(0, target - closing) : 0;
+  const overTarget = hasTarget && closing > target;
+  const excess = overTarget ? closing - target : 0;
 
   const barTone =
     pct >= 100
@@ -52,6 +56,9 @@ export function DashboardTargetBanner({
         : pct >= 30
           ? "from-amber-400 to-orange-500"
           : "from-orange-400 to-red-500";
+
+  const pctLabel =
+    pct >= 10 || pct === 0 ? pct.toFixed(0) : pct.toFixed(1);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-300/80 bg-gradient-to-br from-[#0f2744] via-[#143456] to-[#0f2744] text-white shadow-sm">
@@ -93,7 +100,7 @@ export function DashboardTargetBanner({
                   pct >= 100 ? "text-emerald-300" : "text-orange-300"
                 }`}
               >
-                {hasTarget ? `${pct.toFixed(0)}%` : "—"}
+                {hasTarget ? `${pctLabel}%` : "—"}
               </p>
             </div>
           </div>
@@ -106,26 +113,34 @@ export function DashboardTargetBanner({
                   {compactIdr(closing, currency, formatCurrency)}
                 </span>
               </span>
-              {hasTarget && (
-                <span>
-                  Remaining:{" "}
-                  <span className="font-semibold text-amber-200">
-                    {compactIdr(remaining, currency, formatCurrency)}
+              {hasTarget &&
+                (overTarget ? (
+                  <span>
+                    Over target:{" "}
+                    <span className="font-semibold text-emerald-300">
+                      +{compactIdr(excess, currency, formatCurrency)}
+                    </span>
                   </span>
-                </span>
-              )}
+                ) : (
+                  <span>
+                    Remaining:{" "}
+                    <span className="font-semibold text-amber-200">
+                      {compactIdr(remaining, currency, formatCurrency)}
+                    </span>
+                  </span>
+                ))}
             </div>
             <div
               className="h-3 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10"
               role="progressbar"
               aria-valuenow={Math.round(pct)}
               aria-valuemin={0}
-              aria-valuemax={100}
+              aria-valuemax={Math.max(100, Math.ceil(pct))}
               aria-label="Target achievement"
             >
               <div
                 className={`h-full rounded-full bg-gradient-to-r ${barTone} transition-all duration-700 ease-out`}
-                style={{ width: hasTarget ? `${Math.max(pct, pct > 0 ? 2 : 0)}%` : "0%" }}
+                style={{ width: hasTarget ? `${barWidthPct}%` : "0%" }}
               />
             </div>
           </div>
@@ -147,10 +162,16 @@ export function DashboardTargetBanner({
             </div>
             <div className="rounded-xl bg-white/5 px-4 py-3 ring-1 ring-white/10">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                To go
+                {overTarget ? "Over by" : "To go"}
               </p>
-              <p className="mt-1 text-sm font-bold tabular-nums text-amber-200">
-                {compactIdr(remaining, currency, formatCurrency)}
+              <p
+                className={`mt-1 text-sm font-bold tabular-nums ${
+                  overTarget ? "text-emerald-300" : "text-amber-200"
+                }`}
+              >
+                {overTarget
+                  ? `+${compactIdr(excess, currency, formatCurrency)}`
+                  : compactIdr(remaining, currency, formatCurrency)}
               </p>
             </div>
           </div>

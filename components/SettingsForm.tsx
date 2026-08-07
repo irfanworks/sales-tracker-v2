@@ -84,7 +84,7 @@ export function SettingsForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-md space-y-4">
+    <form onSubmit={handleSubmit} className="w-full min-w-0 max-w-md space-y-4 overflow-x-clip">
       <div>
         <label htmlFor="display-name" className="mb-1 block text-sm font-medium text-slate-700">
           Display Name

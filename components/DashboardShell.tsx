@@ -56,7 +56,7 @@ export function DashboardShell({
       <Header user={user} profile={profile ?? undefined} onMenuClick={() => setNavOpen(true)} />
 
       <div className="flex">
-        <aside className="hidden w-[220px] shrink-0 bg-sidebar lg:sticky lg:top-14 lg:block lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:border-r lg:border-white/[0.06] scrollbar-thin xl:top-16 xl:h-[calc(100vh-4rem)]">
+        <aside className="hidden w-[var(--sidebar-width)] shrink-0 bg-sidebar lg:sticky lg:top-14 lg:block lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:border-r lg:border-white/[0.06] scrollbar-thin xl:top-16 xl:h-[calc(100vh-4rem)]">
           <DashboardNav role={profile?.role ?? "sales"} variant="sidebar" />
         </aside>
 
@@ -99,8 +99,8 @@ export function DashboardShell({
           </p>
         </aside>
 
-        <main className="main-view-transition min-w-0 flex-1">
-          <div className="page-container px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">{children}</div>
+        <main className="main-view-transition min-w-0 flex-1 overflow-x-clip">
+          <div className="page-container px-3 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">{children}</div>
         </main>
       </div>
     </div>

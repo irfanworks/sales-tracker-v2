@@ -2,15 +2,14 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { format, subDays, startOfWeek } from "date-fns";
-import { Filter, X } from "lucide-react";
+import { CalendarRange, Filter, UserRound, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 interface SalesOption {
   id: string;
   display_name: string;
 }
-
-const selectClass =
-  "input-field w-full appearance-none py-1.5 text-[13px] font-medium text-slate-800";
 
 type Preset = "today" | "week" | "7d" | "14d" | "30d";
 
@@ -23,6 +22,26 @@ function presetRange(preset: Preset): { from: string; to: string } {
   }
   const days = preset === "7d" ? 6 : preset === "14d" ? 13 : 29;
   return { from: format(subDays(new Date(), days), "yyyy-MM-dd"), to };
+}
+
+function FilterTile({
+  label,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  icon: LucideIcon;
+  children: ReactNode;
+}) {
+  return (
+    <label className="filter-tile">
+      <span className="filter-tile__meta">
+        <Icon aria-hidden />
+        <span className="filter-tile__label">{label}</span>
+      </span>
+      {children}
+    </label>
+  );
 }
 
 export function SalesActivityFilters({
@@ -102,31 +121,38 @@ export function SalesActivityFilters({
   }
 
   return (
-    <div className="card-elevated overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-slate-600">
-            <Filter className="h-3.5 w-3.5" />
+    <section className="filter-panel" aria-label="Sales activity filters">
+      <div className="filter-panel__header">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="filter-panel__icon">
+            <Filter className="h-4 w-4" />
           </span>
-          <div>
-            <p className="text-[13px] font-semibold tracking-tight text-slate-800">
+          <div className="min-w-0">
+            <p className="filter-panel__title">
               Period for weekly review
+              {hasFilters && (
+                <span className="filter-panel__count">{chips.length}</span>
+              )}
             </p>
-            <p className="text-[11px] text-slate-500">
-              {hasFilters ? `${chips.length} active` : "Pick a range to scan activity"}
+            <p className="filter-panel__sub">
+              {hasFilters ? "Active refinements applied" : "Pick a range to scan activity"}
             </p>
           </div>
         </div>
         {hasFilters && (
-          <button type="button" onClick={clearAll} className="btn-ghost gap-1 px-2 text-[12px] text-slate-600">
+          <button
+            type="button"
+            onClick={clearAll}
+            className="btn-ghost gap-1.5 text-[12px] text-slate-600"
+          >
             <X className="h-3.5 w-3.5" />
-            Reset
+            Reset all
           </button>
         )}
       </div>
 
       {chips.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-b border-slate-100 bg-slate-50/50 px-4 py-2">
+        <div className="filter-panel__chips">
           {chips.map((chip) => (
             <button
               key={chip.key}
@@ -144,91 +170,84 @@ export function SalesActivityFilters({
               }}
               title={`Remove ${chip.label}`}
             >
-              <span className="text-slate-400">{chip.label}:</span>
-              {chip.value}
-              <X className="h-3 w-3 text-slate-400" />
+              <span className="opacity-70">{chip.label}</span>
+              <span className="font-semibold text-cyan-900">{chip.value}</span>
+              <X className="h-3 w-3 opacity-60" />
             </button>
           ))}
         </div>
       )}
 
-      <div className="space-y-3.5 p-3.5 sm:p-4">
-        <div className="flex flex-wrap gap-1.5">
-          {presets.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => applyPreset(p.id)}
-              className={`rounded-md px-2.5 py-1 text-[12px] font-semibold transition-colors duration-150 ${
-                activePreset === p.id
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+      <div className="filter-panel__body">
+        <div>
+          <p className="filter-section-label">Quick range</p>
+          <div className="filter-presets">
+            {presets.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => applyPreset(p.id)}
+                className={`filter-preset${activePreset === p.id ? " is-active" : ""}`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className={`grid gap-3 ${showSalesFilter ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-          <label className="flex min-w-0 flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-              From
-            </span>
-            <input
-              type="date"
-              className={selectClass}
-              value={from ?? ""}
-              onChange={(e) =>
-                pushParams((next) => {
-                  if (e.target.value) next.set("from", e.target.value);
-                  else next.delete("from");
-                })
-              }
-            />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-              To
-            </span>
-            <input
-              type="date"
-              className={selectClass}
-              value={to ?? ""}
-              onChange={(e) =>
-                pushParams((next) => {
-                  if (e.target.value) next.set("to", e.target.value);
-                  else next.delete("to");
-                })
-              }
-            />
-          </label>
-          {showSalesFilter && (
-            <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-                Sales person
-              </span>
-              <select
-                className={selectClass}
-                value={salesId ?? ""}
+        <div>
+          <p className="filter-section-label">Custom</p>
+          <div className="filter-tiles filter-tiles--compact">
+            <FilterTile label="From" icon={CalendarRange}>
+              <input
+                type="date"
+                className="filter-tile__input"
+                value={from ?? ""}
                 onChange={(e) =>
                   pushParams((next) => {
-                    if (e.target.value) next.set("sales_id", e.target.value);
-                    else next.delete("sales_id");
+                    if (e.target.value) next.set("from", e.target.value);
+                    else next.delete("from");
                   })
                 }
-              >
-                <option value="">All sales</option>
-                {salesOptions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.display_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+              />
+            </FilterTile>
+            <FilterTile label="To" icon={CalendarRange}>
+              <input
+                type="date"
+                className="filter-tile__input"
+                value={to ?? ""}
+                onChange={(e) =>
+                  pushParams((next) => {
+                    if (e.target.value) next.set("to", e.target.value);
+                    else next.delete("to");
+                  })
+                }
+              />
+            </FilterTile>
+            {showSalesFilter && (
+              <FilterTile label="Sales owner" icon={UserRound}>
+                <select
+                  className="filter-tile__select"
+                  value={salesId ?? ""}
+                  onChange={(e) =>
+                    pushParams((next) => {
+                      if (e.target.value) next.set("sales_id", e.target.value);
+                      else next.delete("sales_id");
+                    })
+                  }
+                >
+                  <option value="">All sales</option>
+                  {salesOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.display_name}
+                    </option>
+                  ))}
+                </select>
+              </FilterTile>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

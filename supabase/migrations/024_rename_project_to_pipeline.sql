@@ -45,11 +45,28 @@ BEGIN
 END $$;
 
 -- ─── 3) Constraints / indexes (best-effort renames) ──────────────────────────
-ALTER TABLE public.pipelines DROP CONSTRAINT IF EXISTS projects_project_type_check;
-ALTER TABLE public.pipelines DROP CONSTRAINT IF EXISTS pipelines_pipeline_type_check;
-ALTER TABLE public.pipelines
-  ADD CONSTRAINT pipelines_pipeline_type_check
-  CHECK (pipeline_type IN ('Project', 'Trading', 'Service'));
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'pipelines' AND column_name = 'pipeline_type'
+  ) THEN
+    ALTER TABLE public.pipelines DROP CONSTRAINT IF EXISTS projects_project_type_check;
+    ALTER TABLE public.pipelines DROP CONSTRAINT IF EXISTS pipelines_pipeline_type_check;
+    ALTER TABLE public.pipelines
+      ADD CONSTRAINT pipelines_pipeline_type_check
+      CHECK (pipeline_type IN ('Project', 'Trading', 'Service'));
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'pipelines' AND column_name = 'project_type'
+  ) THEN
+    ALTER TABLE public.pipelines DROP CONSTRAINT IF EXISTS projects_project_type_check;
+    ALTER TABLE public.pipelines DROP CONSTRAINT IF EXISTS pipelines_pipeline_type_check;
+    ALTER TABLE public.pipelines
+      ADD CONSTRAINT pipelines_pipeline_type_check
+      CHECK (project_type IN ('Project', 'Trading', 'Service'));
+  END IF;
+END $$;
 
 ALTER INDEX IF EXISTS idx_projects_sales_id RENAME TO idx_pipelines_sales_id;
 ALTER INDEX IF EXISTS idx_projects_customer_id RENAME TO idx_pipelines_customer_id;

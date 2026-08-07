@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { getSupabase } from "@/lib/auth";
 import { customerDetailPath } from "@/lib/customerPaths";
 import type { ProspectStatus } from "@/lib/types/database";
+import { formatPicWithSalutation } from "@/lib/types/database";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,7 @@ export default async function ProspectDetailPage({
       title,
       work_description,
       pic_name,
+      pic_salutation,
       status,
       latest_update,
       sales_id,
@@ -130,6 +132,7 @@ export default async function ProspectDetailPage({
               title: prospect.title,
               work_description: prospect.work_description,
               pic_name: prospect.pic_name,
+              pic_salutation: prospect.pic_salutation,
               status: prospect.status as ProspectStatus,
             }}
           />
@@ -165,7 +168,9 @@ export default async function ProspectDetailPage({
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">PIC</p>
-              <p className="mt-1 font-medium text-slate-800">{prospect.pic_name?.trim() || "—"}</p>
+              <p className="mt-1 font-medium text-slate-800">
+                {formatPicWithSalutation(prospect.pic_salutation, prospect.pic_name)}
+              </p>
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">

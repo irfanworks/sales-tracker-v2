@@ -4,8 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import type { ProspectStatus } from "@/lib/types/database";
-import { PROSPECT_STATUSES } from "@/lib/types/database";
+import type { PicSalutation, ProspectStatus } from "@/lib/types/database";
+import {
+  PIC_SALUTATIONS,
+  PROSPECT_STATUSES,
+  formatPicWithSalutation,
+  isPicSalutation,
+} from "@/lib/types/database";
 import { clipText, logSalesActivity } from "@/lib/salesActivity";
 
 interface CustomerPicOption {
@@ -31,6 +36,7 @@ export function ProspectForm({
     title: string;
     work_description: string | null;
     pic_name?: string | null;
+    pic_salutation?: PicSalutation | null;
     status: ProspectStatus;
   };
   backPath?: string;
@@ -39,6 +45,9 @@ export function ProspectForm({
   const isEdit = Boolean(prospect);
   const [customerId, setCustomerId] = useState(prospect?.customer_id ?? "");
   const [picName, setPicName] = useState(prospect?.pic_name ?? "");
+  const [picSalutation, setPicSalutation] = useState<PicSalutation | "">(
+    isPicSalutation(prospect?.pic_salutation) ? prospect.pic_salutation : ""
+  );
   const [title, setTitle] = useState(prospect?.title ?? "");
   const [workDescription, setWorkDescription] = useState(prospect?.work_description ?? "");
   const [status, setStatus] = useState<ProspectStatus>(prospect?.status ?? "Open");
@@ -95,7 +104,13 @@ export function ProspectForm({
 
   function handleCustomerChange(nextId: string) {
     setCustomerId(nextId);
-    setPicName(nextId === prospect?.customer_id ? (prospect?.pic_name ?? "") : "");
+    if (nextId === prospect?.customer_id) {
+      setPicName(prospect?.pic_name ?? "");
+      setPicSalutation(isPicSalutation(prospect?.pic_salutation) ? prospect.pic_salutation : "");
+    } else {
+      setPicName("");
+      setPicSalutation("");
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -108,6 +123,10 @@ export function ProspectForm({
     }
     if (!picName.trim()) {
       setError("PIC is required. Select a PIC from the chosen customer.");
+      return;
+    }
+    if (!picSalutation) {
+      setError("PIC salutation is required (Mr. / Mrs. / Ms.).");
       return;
     }
     if (!title.trim()) {
@@ -130,11 +149,13 @@ export function ProspectForm({
     const customerName = selectedCustomer?.name ?? "customer";
     const trimmedTitle = title.trim();
     const trimmedPic = picName.trim();
+    const picLabel = formatPicWithSalutation(picSalutation, trimmedPic);
 
     if (prospect) {
       const changes: string[] = [];
       if (prospect.customer_id !== customerId) changes.push(`Customer → ${customerName}`);
-      if ((prospect.pic_name ?? "") !== trimmedPic) changes.push(`PIC → ${trimmedPic}`);
+      const prevPic = formatPicWithSalutation(prospect.pic_salutation, prospect.pic_name);
+      if (prevPic !== picLabel) changes.push(`PIC → ${picLabel}`);
       if (prospect.title !== trimmedTitle) changes.push(`Title → ${trimmedTitle}`);
       if ((prospect.work_description ?? "") !== (workDescription.trim() || "")) {
         changes.push("Work description updated");
@@ -156,6 +177,7 @@ export function ProspectForm({
           title: trimmedTitle,
           work_description: workDescription.trim() || null,
           pic_name: trimmedPic,
+          pic_salutation: picSalutation,
           status,
         })
         .eq("id", prospect.id);
@@ -189,6 +211,7 @@ export function ProspectForm({
         title: trimmedTitle,
         work_description: workDescription.trim() || null,
         pic_name: trimmedPic,
+        pic_salutation: picSalutation,
         status: "Open",
         sales_id: user.id,
         latest_update: trimmedUpdate || null,
@@ -216,7 +239,7 @@ export function ProspectForm({
       entityType: "prospect",
       entityId: created.id,
       entityLabel: trimmedTitle,
-      summary: `Created prospect “${trimmedTitle}” for ${customerName} (PIC: ${trimmedPic})`,
+      summary: `Created prospect “${trimmedTitle}” for ${customerName} (PIC: ${picLabel})`,
       details: trimmedUpdate ? `Initial note: ${clipText(trimmedUpdate)}` : null,
     });
 
@@ -226,15 +249,15 @@ export function ProspectForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="w-full min-w-0 space-y-6 overflow-x-clip">
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
           {error}
         </p>
       )}
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div>
+      <div className="form-grid">
+        <div className="min-w-0">
           <label htmlFor="prospect-customer" className="mb-1 block text-sm font-medium text-slate-700">
             Customer
           </label>
@@ -253,39 +276,58 @@ export function ProspectForm({
             ))}
           </select>
         </div>
-        <div>
+        <div className="min-w-0">
           <label htmlFor="prospect-pic" className="mb-1 block text-sm font-medium text-slate-700">
             PIC <span className="text-red-600">*</span>
           </label>
-          <select
-            id="prospect-pic"
-            value={picName}
-            onChange={(e) => setPicName(e.target.value)}
-            className="input-field"
-            required
-            disabled={!customerId || loadingPics}
-          >
-            <option value="">
-              {!customerId
-                ? "Select customer first"
-                : loadingPics
-                  ? "Loading PICs…"
-                  : picOptions.length === 0
-                    ? "No PIC — add one on Customer first"
-                    : "Select PIC"}
-            </option>
-            {picOptions.map((p) => (
-              <option key={p.id} value={p.nama ?? ""}>
-                {p.nama}
+          <div className="grid grid-cols-1 gap-2.5 min-[380px]:grid-cols-[minmax(5.5rem,7rem)_minmax(0,1fr)]">
+            <select
+              id="prospect-pic-salutation"
+              value={picSalutation}
+              onChange={(e) =>
+                setPicSalutation(isPicSalutation(e.target.value) ? e.target.value : "")
+              }
+              className="input-field"
+              required
+              aria-label="PIC salutation"
+            >
+              <option value="">Title</option>
+              {PIC_SALUTATIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <select
+              id="prospect-pic"
+              value={picName}
+              onChange={(e) => setPicName(e.target.value)}
+              className="input-field"
+              required
+              disabled={!customerId || loadingPics}
+            >
+              <option value="">
+                {!customerId
+                  ? "Select customer first"
+                  : loadingPics
+                    ? "Loading PICs…"
+                    : picOptions.length === 0
+                      ? "No PIC — add one on Customer first"
+                      : "Select PIC"}
               </option>
-            ))}
-            {prospect?.pic_name &&
-              !picOptions.some((p) => p.nama === prospect.pic_name) && (
-                <option value={prospect.pic_name}>{prospect.pic_name} (saved)</option>
-              )}
-          </select>
+              {picOptions.map((p) => (
+                <option key={p.id} value={p.nama ?? ""}>
+                  {p.nama}
+                </option>
+              ))}
+              {prospect?.pic_name &&
+                !picOptions.some((p) => p.nama === prospect.pic_name) && (
+                  <option value={prospect.pic_name}>{prospect.pic_name} (saved)</option>
+                )}
+            </select>
+          </div>
           <p className="mt-1 text-xs text-slate-500">
-            Choose from PICs saved for this customer.
+            Choose salutation and PIC saved for this customer.
           </p>
         </div>
       </div>

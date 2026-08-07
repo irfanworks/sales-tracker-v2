@@ -32,7 +32,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="card-elevated w-full max-w-md animate-slide-up p-6 sm:p-8">
+    <div className="card-elevated w-full max-w-md animate-slide-up p-5 sm:p-8">
       <div className="mb-8 flex flex-col items-center text-center">
         <Image
           src="/logo.png"

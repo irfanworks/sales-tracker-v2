@@ -9,7 +9,9 @@ Replace `enercon-quotation-template.docx` with the official Enercon letterhead t
 | `{{date}}` | Generation date (`dd MMM yyyy`) |
 | `{{customer_name}}` | Customer name |
 | `{{customer_sector}}` | Customer sector |
-| `{{pic_name}}` | Pipeline PIC |
+| `{{pic_salutation}}` | `Mr.` / `Mrs.` / `Ms.` (empty string if unset) |
+| `{{pic_name}}` | PIC name only |
+| `{{pic_full}}` | Combined `Mr. Name` (or name alone / `—`) |
 | `{{pipeline_name}}` | Pipeline / work name |
 | `{{pipeline_type}}` | Project / Trading / Service |
 | `{{progress_type}}` | Progress type |
@@ -20,9 +22,21 @@ Replace `enercon-quotation-template.docx` with the official Enercon letterhead t
 | `{{sales_name}}` | Pipeline owner display name |
 | `{{sales_email}}` | Pipeline owner email |
 
-Empty values render as `—`.
+Empty values generally render as `—`. `{{pic_salutation}}` is blank when unset so `{{pic_salutation}} {{pic_name}}` does not print a stray dash.
 
 Tags use **double curly braces** (`{{name}}`). The generator is configured for these delimiters.
+
+Recommended PIC line in the official template:
+
+```text
+PIC: {{pic_salutation}} {{pic_name}}
+```
+
+Or a single token (used by the starter template):
+
+```text
+PIC: {{pic_full}}
+```
 
 ## How to swap the official template
 

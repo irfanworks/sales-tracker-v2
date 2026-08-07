@@ -14,6 +14,7 @@ import {
 import {
   PRICE_VALIDITY_OPTIONS,
   emptyPaymentTerm,
+  isPriceValidityDays,
   revisionSuffix,
   validatePaymentTerms,
   type PriceValidityDays,
@@ -57,9 +58,7 @@ export function QuoteRevisePanel({
     formatNumberAsThousands(project.value ?? null)
   );
   const [priceValidity, setPriceValidity] = useState<PriceValidityDays | "">(
-    project.price_validity_days === 60 || project.price_validity_days === 90
-      ? project.price_validity_days
-      : ""
+    isPriceValidityDays(project.price_validity_days) ? project.price_validity_days : ""
   );
   const [deliveryWeeks, setDeliveryWeeks] = useState(
     project.delivery_weeks != null ? String(project.delivery_weeks) : ""
@@ -73,9 +72,7 @@ export function QuoteRevisePanel({
     setError(null);
     setValueDisplay(formatNumberAsThousands(project.value ?? null));
     setPriceValidity(
-      project.price_validity_days === 60 || project.price_validity_days === 90
-        ? project.price_validity_days
-        : ""
+      isPriceValidityDays(project.price_validity_days) ? project.price_validity_days : ""
     );
     setDeliveryWeeks(project.delivery_weeks != null ? String(project.delivery_weeks) : "");
     setPaymentTerms(normalizeTerms(project.payment_terms));
@@ -90,8 +87,8 @@ export function QuoteRevisePanel({
       setError("Enter a valid tender value.");
       return;
     }
-    if (priceValidity !== 60 && priceValidity !== 90) {
-      setError("Price validity is required (60 or 90 days).");
+    if (!isPriceValidityDays(priceValidity)) {
+      setError("Price validity is required (30, 60, or 90 days).");
       return;
     }
     const weeks = Number(deliveryWeeks);
@@ -210,8 +207,8 @@ export function QuoteRevisePanel({
             </button>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
+          <div className="form-grid gap-4">
+            <div className="min-w-0">
               <label className="mb-1 block text-sm font-medium text-slate-700">
                 New tender value (IDR)
               </label>
@@ -224,7 +221,7 @@ export function QuoteRevisePanel({
                 placeholder="e.g. 1,500,000,000"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="mb-1 block text-sm font-medium text-slate-700">Price validity</label>
               <select
                 value={priceValidity}
@@ -243,7 +240,7 @@ export function QuoteRevisePanel({
                 ))}
               </select>
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="mb-1 block text-sm font-medium text-slate-700">
                 Delivery (weeks)
               </label>
@@ -255,7 +252,7 @@ export function QuoteRevisePanel({
                 className="input-field tabular-nums"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="mb-1 block text-sm font-medium text-slate-700">
                 Notes (optional)
               </label>

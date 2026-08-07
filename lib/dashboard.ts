@@ -119,7 +119,7 @@ export function calcDashboardKpis(
 
   const target = annualSalesTarget != null && annualSalesTarget > 0 ? annualSalesTarget : null;
   const targetAchievementPct =
-    target != null ? Math.min(100, (closingForTarget / target) * 100) : null;
+    target != null ? (closingForTarget / target) * 100 : null;
 
   return {
     totalPipelineValue,

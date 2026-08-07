@@ -209,9 +209,9 @@ export function CustomerEditForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
+    <form onSubmit={handleSubmit} className="w-full min-w-0 space-y-6 overflow-x-clip">
+      <div className="form-grid">
+        <div className="min-w-0">
           <label className="mb-1 block text-sm font-medium text-slate-700">Customer name *</label>
           <input
             type="text"
@@ -221,7 +221,7 @@ export function CustomerEditForm({
             required
           />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="mb-1 block text-sm font-medium text-slate-700">Sector</label>
           <select
             value={sector}
@@ -302,7 +302,7 @@ export function CustomerEditForm({
             {draftPics.map((pic, i) => (
               <div
                 key={pic.id ?? `draft-${i}`}
-                className="grid gap-3 rounded border border-slate-100 bg-white p-3 sm:grid-cols-2 lg:grid-cols-4"
+                className="grid grid-cols-1 gap-3 rounded border border-slate-100 bg-white p-3 md:grid-cols-2 lg:grid-cols-4"
               >
                 <input
                   type="text"

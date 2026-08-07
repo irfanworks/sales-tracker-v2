@@ -6,34 +6,43 @@ import {
   PROGRESS_TYPES,
   PROSPECT_OPTIONS,
 } from "@/lib/types/database";
-import { Filter, X } from "lucide-react";
+import {
+  ArrowDownWideNarrow,
+  ArrowUpDown,
+  Filter,
+  Flame,
+  ListFilter,
+  Trophy,
+  UserRound,
+  X,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 interface SalesOption {
   id: string;
   display_name: string;
 }
 
-function FilterField({
+function FilterTile({
   label,
+  icon: Icon,
   children,
-  className = "",
 }: {
   label: string;
-  children: React.ReactNode;
-  className?: string;
+  icon: LucideIcon;
+  children: ReactNode;
 }) {
   return (
-    <label className={`flex min-w-0 flex-col gap-1 ${className}`}>
-      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
-        {label}
+    <label className="filter-tile">
+      <span className="filter-tile__meta">
+        <Icon aria-hidden />
+        <span className="filter-tile__label">{label}</span>
       </span>
       {children}
     </label>
   );
 }
-
-const selectClass =
-  "input-field w-full appearance-none py-1.5 text-[13px] font-medium text-slate-800";
 
 export function PipelinesFilters({
   progressType,
@@ -68,7 +77,8 @@ export function PipelinesFilters({
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== "page") next.delete("page");
-    router.push(`${basePath}?${next.toString()}`);
+    const qs = next.toString();
+    router.push(qs ? `${basePath}?${qs}` : basePath);
   }
 
   const salesLabel = salesId
@@ -98,16 +108,21 @@ export function PipelinesFilters({
   const hasFilters = chips.length > 0;
 
   return (
-    <div className="card-elevated overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5 sm:px-4">
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-slate-600">
-            <Filter className="h-3.5 w-3.5" />
+    <section className="filter-panel" aria-label="Pipeline filters">
+      <div className="filter-panel__header">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="filter-panel__icon">
+            <Filter className="h-4 w-4" />
           </span>
-          <div>
-            <p className="text-[13px] font-semibold tracking-tight text-slate-800">Filters</p>
-            <p className="text-[11px] text-slate-500">
-              {hasFilters ? `${chips.length} active` : "Refine the list"}
+          <div className="min-w-0">
+            <p className="filter-panel__title">
+              Filters
+              {hasFilters && (
+                <span className="filter-panel__count">{chips.length}</span>
+              )}
+            </p>
+            <p className="filter-panel__sub">
+              {hasFilters ? "Active refinements applied to this list" : "Refine pipelines with precision"}
             </p>
           </div>
         </div>
@@ -115,16 +130,16 @@ export function PipelinesFilters({
           <button
             type="button"
             onClick={() => router.push(basePath)}
-            className="btn-ghost gap-1 px-2 text-[12px] text-slate-600"
+            className="btn-ghost gap-1.5 text-[12px] text-slate-600"
           >
             <X className="h-3.5 w-3.5" />
-            Clear
+            Reset all
           </button>
         )}
       </div>
 
       {hasFilters && (
-        <div className="flex flex-wrap gap-1.5 border-b border-slate-100 bg-slate-50/50 px-4 py-2">
+        <div className="filter-panel__chips">
           {chips.map((chip) => (
             <button
               key={chip.key}
@@ -133,109 +148,111 @@ export function PipelinesFilters({
               onClick={() => updateFilter(chip.key, "")}
               title={`Remove ${chip.label}`}
             >
-              <span className="text-slate-400">{chip.label}:</span>
-              {chip.value}
-              <X className="h-3 w-3 text-slate-400" />
+              <span className="opacity-70">{chip.label}</span>
+              <span className="font-semibold text-cyan-900">{chip.value}</span>
+              <X className="h-3 w-3 opacity-60" />
             </button>
           ))}
         </div>
       )}
 
-      <div
-        className={`grid gap-3 p-3.5 sm:p-4 ${
-          showProgressFilter && showSalesFilter
-            ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
-            : showSalesFilter || showProgressFilter
-              ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-              : "sm:grid-cols-2 lg:grid-cols-4"
-        }`}
-      >
-        {showProgressFilter && (
-          <FilterField label="Progress">
-            <select
-              value={progressType ?? ""}
-              onChange={(e) => updateFilter("progress_type", e.target.value)}
-              className={selectClass}
-            >
-              <option value="">All</option>
-              {progressTypeOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </FilterField>
-        )}
+      <div className="filter-panel__body">
+        <div>
+          <p className="filter-section-label">Refine</p>
+          <div className="filter-tiles">
+            {showProgressFilter && (
+              <FilterTile label="Progress" icon={ListFilter}>
+                <select
+                  value={progressType ?? ""}
+                  onChange={(e) => updateFilter("progress_type", e.target.value)}
+                  className="filter-tile__select"
+                >
+                  <option value="">All progress</option>
+                  {progressTypeOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </FilterTile>
+            )}
 
-        <FilterField label="Prospect">
-          <select
-            value={prospect ?? ""}
-            onChange={(e) => updateFilter("prospect", e.target.value)}
-            className={selectClass}
-          >
-            <option value="">All</option>
-            {PROSPECT_OPTIONS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </FilterField>
+            <FilterTile label="Prospect heat" icon={Flame}>
+              <select
+                value={prospect ?? ""}
+                onChange={(e) => updateFilter("prospect", e.target.value)}
+                className="filter-tile__select"
+              >
+                <option value="">All heats</option>
+                {PROSPECT_OPTIONS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </FilterTile>
 
-        <FilterField label="Outcome">
-          <select
-            value={outcomeStatus ?? ""}
-            onChange={(e) => updateFilter("outcome_status", e.target.value)}
-            className={selectClass}
-          >
-            <option value="">All</option>
-            {OUTCOME_STATUSES.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-        </FilterField>
+            <FilterTile label="Outcome" icon={Trophy}>
+              <select
+                value={outcomeStatus ?? ""}
+                onChange={(e) => updateFilter("outcome_status", e.target.value)}
+                className="filter-tile__select"
+              >
+                <option value="">All outcomes</option>
+                {OUTCOME_STATUSES.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </FilterTile>
 
-        {showSalesFilter && (
-          <FilterField label="Sales">
-            <select
-              value={salesId ?? ""}
-              onChange={(e) => updateFilter("sales_id", e.target.value)}
-              className={selectClass}
-            >
-              <option value="">All</option>
-              {salesOptions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.display_name}
-                </option>
-              ))}
-            </select>
-          </FilterField>
-        )}
+            {showSalesFilter && (
+              <FilterTile label="Sales owner" icon={UserRound}>
+                <select
+                  value={salesId ?? ""}
+                  onChange={(e) => updateFilter("sales_id", e.target.value)}
+                  className="filter-tile__select"
+                >
+                  <option value="">All sales</option>
+                  {salesOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.display_name}
+                    </option>
+                  ))}
+                </select>
+              </FilterTile>
+            )}
+          </div>
+        </div>
 
-        <FilterField label="Sort by">
-          <select
-            value={sortBy ?? "date"}
-            onChange={(e) => updateFilter("sort_by", e.target.value)}
-            className={selectClass}
-          >
-            <option value="date">Date</option>
-            <option value="target_closing">Target closing</option>
-          </select>
-        </FilterField>
+        <div>
+          <p className="filter-section-label">Sort</p>
+          <div className="filter-tiles filter-tiles--sort">
+            <FilterTile label="Sort by" icon={ArrowUpDown}>
+              <select
+                value={sortBy ?? "date"}
+                onChange={(e) => updateFilter("sort_by", e.target.value)}
+                className="filter-tile__select"
+              >
+                <option value="date">Date created</option>
+                <option value="target_closing">Target closing</option>
+              </select>
+            </FilterTile>
 
-        <FilterField label="Order">
-          <select
-            value={sortOrder ?? "desc"}
-            onChange={(e) => updateFilter("sort_order", e.target.value)}
-            className={selectClass}
-          >
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
-        </FilterField>
+            <FilterTile label="Order" icon={ArrowDownWideNarrow}>
+              <select
+                value={sortOrder ?? "desc"}
+                onChange={(e) => updateFilter("sort_order", e.target.value)}
+                className="filter-tile__select"
+              >
+                <option value="desc">Newest first</option>
+                <option value="asc">Oldest first</option>
+              </select>
+            </FilterTile>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

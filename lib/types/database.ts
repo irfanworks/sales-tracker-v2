@@ -28,6 +28,25 @@ export interface CustomerPic {
   jabatan: string | null;
 }
 
+/** Courtesy title shown before customer PIC name */
+export const PIC_SALUTATIONS = ["Mr.", "Mrs.", "Ms."] as const;
+export type PicSalutation = (typeof PIC_SALUTATIONS)[number];
+
+export function isPicSalutation(value: string | null | undefined): value is PicSalutation {
+  return PIC_SALUTATIONS.includes(value as PicSalutation);
+}
+
+/** e.g. "Mr. Budi" or "Budi" / "—" */
+export function formatPicWithSalutation(
+  salutation: string | null | undefined,
+  name: string | null | undefined
+): string {
+  const n = name?.trim();
+  if (!n) return "—";
+  const s = salutation?.trim();
+  return s ? `${s} ${n}` : n;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -101,6 +120,7 @@ export interface Pipeline {
   outcome_status?: OutcomeStatus | null;
   prospect: ProspectOption;
   pic_name?: string | null;
+  pic_salutation?: PicSalutation | null;
   weekly_update: string | null;
   target_closing_at?: string | null;
   price_validity_days?: number | null;
@@ -146,6 +166,7 @@ export interface Prospect {
   title: string;
   work_description: string | null;
   pic_name?: string | null;
+  pic_salutation?: PicSalutation | null;
   status: ProspectStatus;
   sales_id: string;
   latest_update: string | null;
@@ -159,6 +180,7 @@ export interface ProspectInsert {
   title: string;
   work_description?: string | null;
   pic_name?: string | null;
+  pic_salutation?: PicSalutation | null;
   status?: ProspectStatus;
   latest_update?: string | null;
 }

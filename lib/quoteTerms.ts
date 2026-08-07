@@ -13,8 +13,14 @@ export const PAYMENT_TERM_PRESETS = [
 
 export type PaymentTermPreset = (typeof PAYMENT_TERM_PRESETS)[number];
 
-export const PRICE_VALIDITY_OPTIONS = [60, 90] as const;
+export const PRICE_VALIDITY_OPTIONS = [30, 60, 90] as const;
 export type PriceValidityDays = (typeof PRICE_VALIDITY_OPTIONS)[number];
+
+export function isPriceValidityDays(
+  value: number | string | null | undefined
+): value is PriceValidityDays {
+  return value === 30 || value === 60 || value === 90;
+}
 
 export function emptyPaymentTerm(): PaymentTermLine {
   return { label: "Down payment", percent: 0, is_custom: false };

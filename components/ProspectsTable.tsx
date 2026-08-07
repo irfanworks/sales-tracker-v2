@@ -10,6 +10,7 @@ import { ProspectStatusBadge } from "@/components/ProspectStatusBadge";
 import { customerDetailPath } from "@/lib/customerPaths";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { ProspectStatus } from "@/lib/types/database";
+import { formatPicWithSalutation } from "@/lib/types/database";
 import { logSalesActivity } from "@/lib/salesActivity";
 
 const linkClass =
@@ -21,6 +22,7 @@ interface ProspectRow {
   title: string;
   work_description: string | null;
   pic_name?: string | null;
+  pic_salutation?: string | null;
   status: ProspectStatus;
   latest_update: string | null;
   sales_id: string;
@@ -116,7 +118,9 @@ export function ProspectsTable({
                   "—"
                 )}
               </td>
-              <td className="px-4 py-3 text-slate-700">{p.pic_name?.trim() || "—"}</td>
+              <td className="px-4 py-3 text-slate-700">
+                {formatPicWithSalutation(p.pic_salutation, p.pic_name)}
+              </td>
               <td className="px-4 py-3">
                 <Link href={`/dashboard/prospects/${p.id}`} className={linkClass}>
                   {p.title}

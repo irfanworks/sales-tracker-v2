@@ -111,9 +111,9 @@ export function AddCustomerForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
+    <form onSubmit={handleSubmit} className="w-full min-w-0 space-y-6 overflow-x-clip">
+      <div className="form-grid">
+        <div className="min-w-0">
           <label htmlFor="customer-name" className="mb-1 block text-sm font-medium text-slate-700">
             Customer name *
           </label>
@@ -164,7 +164,7 @@ export function AddCustomerForm({
         <p className="mb-2 text-xs text-slate-500">At least one PIC with a name is required.</p>
         <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
           {pics.map((pic, i) => (
-            <div key={i} className="grid gap-3 rounded border border-slate-100 bg-white p-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div key={i} className="grid grid-cols-1 gap-3 rounded border border-slate-100 bg-white p-3 md:grid-cols-2 lg:grid-cols-4">
               <input
                 type="text"
                 value={pic.nama}

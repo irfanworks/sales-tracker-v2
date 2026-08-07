@@ -32,16 +32,16 @@ export function PaymentTermsEditor({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="text-sm font-medium text-slate-700">Payment terms</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-[13px] font-medium tracking-tight text-slate-600">Payment terms</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
             Description + percentage. Total must equal 100%.
           </p>
         </div>
         <p
-          className={`text-sm font-semibold tabular-nums ${
+          className={`text-[13px] font-semibold tabular-nums transition-colors duration-300 ${
             Math.abs(total - 100) < 0.01 ? "text-emerald-700" : "text-amber-700"
           }`}
         >
@@ -49,8 +49,8 @@ export function PaymentTermsEditor({
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200">
-        <div className="hidden grid-cols-[1fr_7rem_2.5rem] gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:grid">
+      <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white/70 transition-shadow duration-300">
+        <div className="hidden grid-cols-[minmax(0,1fr)_7rem_2.5rem] gap-2 border-b border-slate-100/90 bg-white/60 px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400 md:grid">
           <span>Description</span>
           <span>% </span>
           <span />
@@ -61,7 +61,7 @@ export function PaymentTermsEditor({
             return (
               <div
                 key={index}
-                className="grid gap-2 p-3 sm:grid-cols-[1fr_7rem_2.5rem] sm:items-start"
+                className="grid grid-cols-1 gap-2 p-3 md:grid-cols-[minmax(0,1fr)_7rem_2.5rem] md:items-start"
               >
                 <div className="space-y-2">
                   <select
@@ -83,7 +83,7 @@ export function PaymentTermsEditor({
                         updateRow(index, { label: preset, is_custom: false });
                       }
                     }}
-                    className="input-field py-2 text-sm"
+                    className="input-field text-sm"
                     disabled={disabled}
                   >
                     {PAYMENT_TERM_PRESETS.map((p) => (
@@ -99,7 +99,7 @@ export function PaymentTermsEditor({
                       onChange={(e) =>
                         updateRow(index, { label: e.target.value, is_custom: true })
                       }
-                      className="input-field py-2 text-sm"
+                      className="input-field text-sm"
                       placeholder="Custom payment description"
                       disabled={disabled}
                     />
@@ -120,7 +120,7 @@ export function PaymentTermsEditor({
                         percent: e.target.value === "" ? 0 : Number(e.target.value),
                       })
                     }
-                    className="input-field py-2 text-sm tabular-nums"
+                    className="input-field text-sm tabular-nums"
                     disabled={disabled}
                   />
                 </div>

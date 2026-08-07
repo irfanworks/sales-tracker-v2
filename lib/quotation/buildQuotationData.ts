@@ -1,5 +1,6 @@
 import { format } from "date-fns";
-import type { PaymentTermLine } from "@/lib/types/database";
+import type { PaymentTermLine, PicSalutation } from "@/lib/types/database";
+import { formatPicWithSalutation } from "@/lib/types/database";
 
 const EMPTY = "—";
 
@@ -8,7 +9,12 @@ export type QuotationTemplateFields = {
   date: string;
   customer_name: string;
   customer_sector: string;
+  /** Salutation only, e.g. "Mr." — empty string when unset (avoids "— Name") */
+  pic_salutation: string;
+  /** PIC name only */
   pic_name: string;
+  /** Combined "Mr. Name" for templates that prefer one token */
+  pic_full: string;
   pipeline_name: string;
   pipeline_type: string;
   progress_type: string;
@@ -27,6 +33,7 @@ export type QuotationSource = {
   progress_type?: string | null;
   value?: number | null;
   pic_name?: string | null;
+  pic_salutation?: PicSalutation | string | null;
   price_validity_days?: number | null;
   delivery_weeks?: number | null;
   payment_terms?: PaymentTermLine[] | null;
@@ -67,12 +74,17 @@ export function formatPaymentTermsForDoc(
 
 /** Build the exact placeholder map used by the DOCX template. */
 export function buildQuotationData(source: QuotationSource): QuotationTemplateFields {
+  const picName = source.pic_name?.trim() || "";
+  const picSalutation = source.pic_salutation?.trim() || "";
+
   return {
     no_quote: text(source.no_quote),
     date: format(source.date ?? new Date(), "dd MMM yyyy"),
     customer_name: text(source.customer_name),
     customer_sector: text(source.customer_sector),
+    pic_salutation: picSalutation,
     pic_name: text(source.pic_name),
+    pic_full: formatPicWithSalutation(picSalutation || null, picName || null),
     pipeline_name: text(source.pipeline_name),
     pipeline_type: text(source.pipeline_type),
     progress_type: text(source.progress_type),

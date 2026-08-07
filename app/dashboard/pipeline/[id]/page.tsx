@@ -13,7 +13,7 @@ import { OutcomeBadge } from "@/components/OutcomeBadge";
 import { PipelineTypeBadge } from "@/components/PipelineTypeBadge";
 import { PipelineStatusToggle } from "@/components/PipelineStatusToggle";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PROGRESS_TYPES, PROSPECT_OPTIONS } from "@/lib/types/database";
+import { PROGRESS_TYPES, PROSPECT_OPTIONS, formatPicWithSalutation } from "@/lib/types/database";
 import type { LifecycleStatus, PaymentTermLine, PipelineType, QuoteRevision } from "@/lib/types/database";
 import { ensurePipelineSlug, getPipelineBySlugOrId } from "@/lib/pipelines";
 import { pipelineDetailPath } from "@/lib/pipelinePaths";
@@ -90,6 +90,7 @@ export default async function ProjectDetailPage({
     prospect,
     target_closing_at,
     pic_name,
+    pic_salutation,
     price_validity_days,
     delivery_weeks,
     payment_terms,
@@ -209,8 +210,8 @@ export default async function ProjectDetailPage({
       </div>
 
       {isEdit ? (
-        <div className="card-elevated p-5 sm:p-6">
-          <h1 className="mb-6 text-xl font-bold text-slate-900">Edit Pipeline</h1>
+        <div className="pipeline-form-card p-4 sm:p-6 md:p-8">
+          <h1 className="pipeline-page-title mb-6">Edit Pipeline</h1>
           <PipelineForm
             customers={customersNormalized}
             progressTypes={PROGRESS_TYPES}
@@ -228,12 +229,13 @@ export default async function ProjectDetailPage({
               prospect: project.prospect,
               target_closing_at: project.target_closing_at ?? null,
               pic_name: project.pic_name ?? null,
+              pic_salutation: project.pic_salutation ?? null,
               price_validity_days: project.price_validity_days,
               delivery_weeks: project.delivery_weeks,
               payment_terms: paymentTerms,
             }}
           />
-          <p className="mt-6 text-sm text-slate-500">
+          <p className="pipeline-hint mt-8 border-t border-slate-100 pt-5">
             Tender value and commercial terms are changed via <strong>Revisi Quote</strong> on the
             detail page so history stays accurate. Progress updates are never overwritten here.
           </p>
@@ -277,7 +279,9 @@ export default async function ProjectDetailPage({
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">PIC</dt>
-                <dd className="mt-1 font-medium text-slate-900">{project.pic_name ?? "—"}</dd>
+                <dd className="mt-1 font-medium text-slate-900">
+                  {formatPicWithSalutation(project.pic_salutation, project.pic_name)}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
