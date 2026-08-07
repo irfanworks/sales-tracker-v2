@@ -413,7 +413,7 @@ export function PipelinesTable({
                 <td className="whitespace-nowrap px-4 py-3.5">
                   <ProspectBadge value={p.prospect} />
                 </td>
-                <td className="min-w-[200px] px-4 py-3.5">
+                <td className="whitespace-nowrap px-4 py-3.5">
                   <OutcomeStatusSwitcher
                     pipelineId={p.id}
                     value={p.outcome_status}

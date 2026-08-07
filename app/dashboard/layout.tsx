@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getAuthUser, getProfile } from "@/lib/auth";
 import { DashboardShell } from "@/components/DashboardShell";
+import { OverdueOutcomeModal } from "@/components/OverdueOutcomeModal";
+import { getOverdueWithoutOutcome } from "@/lib/overdueOutcome";
 
 export default async function DashboardLayout({
   children,
@@ -12,10 +14,20 @@ export default async function DashboardLayout({
     redirect("/login?redirectTo=/dashboard");
   }
 
-  const profile = await getProfile();
+  const [profile, overdue] = await Promise.all([
+    getProfile(),
+    getOverdueWithoutOutcome(8),
+  ]);
 
   return (
     <DashboardShell user={user} profile={profile}>
+      {overdue.count > 0 && (
+        <OverdueOutcomeModal
+          count={overdue.count}
+          items={overdue.items}
+          isAdmin={overdue.isAdmin}
+        />
+      )}
       {children}
     </DashboardShell>
   );
