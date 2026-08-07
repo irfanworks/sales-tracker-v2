@@ -1,46 +1,43 @@
 # Quotation DOCX placeholders
 
-Replace `enercon-quotation-template.docx` with the official Enercon letterhead template when ready.
-**Keep the same placeholder names** (including double curly braces) so no code changes are required.
+Official letterhead lives at `templates/quotation/enercon-quotation-template.docx`.
+**Do not replace it with the tiny starter stub** — download files must keep letterhead, logo, and layout (~1MB template).
+
+## Placeholders used by the official Enercon template
 
 | Placeholder | Source |
 |-------------|--------|
-| `{{no_quote}}` | Pipeline quote number |
-| `{{date}}` | Generation date (`dd MMM yyyy`) |
-| `{{customer_name}}` | Customer name |
+| `{{no_quote}}` | Pipeline quote number (also in footer) |
+| `{{date}}` | Generation date (`dd MMMM yyyy`) |
+| `{{customer_name}}` | Customer name (`To:`) |
+| `{{pic_name}}` | PIC with salutation when set (`Attn:` / `Dear`) |
+| `{{pipeline_name}}` | Pipeline / work name (`Ref:`) |
+| `{{price_validity_days}}` | e.g. `30 days` |
+| `{{delivery_weeks}}` | e.g. `8 weeks` |
+| `{{payment_terms}}` | Human-readable payment terms |
+| `{{sales_name}}` | Pipeline owner display name |
+
+## Also available (optional in custom templates)
+
+| Placeholder | Source |
+|-------------|--------|
 | `{{customer_sector}}` | Customer sector |
-| `{{pic_salutation}}` | `Mr.` / `Mrs.` / `Ms.` (empty string if unset) |
-| `{{pic_name}}` | PIC name only |
-| `{{pic_full}}` | Combined `Mr. Name` (or name alone / `—`) |
-| `{{pipeline_name}}` | Pipeline / work name |
+| `{{pic_salutation}}` | `Mr.` / `Mrs.` / `Ms.` (empty if unset) |
+| `{{pic_full}}` | Same as formatted `{{pic_name}}` |
 | `{{pipeline_type}}` | Project / Trading / Service |
 | `{{progress_type}}` | Progress type |
-| `{{value_idr}}` | Tender value formatted as `Rp …` (IDR) |
-| `{{price_validity_days}}` | e.g. `60 days` |
-| `{{delivery_weeks}}` | e.g. `8 weeks` |
-| `{{payment_terms}}` | Human-readable payment terms (joined with `; `) |
-| `{{sales_name}}` | Pipeline owner display name |
-| `{{sales_email}}` | Pipeline owner email |
+| `{{value_idr}}` | Tender value as `Rp …` |
+| `{{sales_email}}` | Owner email |
 
-Empty values generally render as `—`. `{{pic_salutation}}` is blank when unset so `{{pic_salutation}} {{pic_name}}` does not print a stray dash.
+Empty values generally render as `—`.
 
-Tags use **double curly braces** (`{{name}}`). The generator is configured for these delimiters.
+Tags use **double curly braces** (`{{name}}`). Keep each `{{token}}` in a single Word text run (avoid splitting braces across bold/font changes).
 
-Recommended PIC line in the official template:
+## How to update the official template
 
-```text
-PIC: {{pic_salutation}} {{pic_name}}
-```
+1. Edit `templates/quotation/enercon-quotation-template.docx` in Word.
+2. Keep the same placeholder names.
+3. Save in place (file should stay large — letterhead + images).
+4. Redeploy / restart. No code changes needed if placeholders are unchanged.
 
-Or a single token (used by the starter template):
-
-```text
-PIC: {{pic_full}}
-```
-
-## How to swap the official template
-
-1. Open your Enercon quotation `.docx` in Word.
-2. Type the placeholders above exactly where values should appear (one complete `{{token}}` per run of text — avoid splitting a placeholder across formatting).
-3. Save as `templates/quotation/enercon-quotation-template.docx` (overwrite this file).
-4. Redeploy / restart the app. No code changes needed.
+If Download Quotation returns a tiny unstructured doc (~3KB), the starter stub was deployed by mistake — restore this file and redeploy.

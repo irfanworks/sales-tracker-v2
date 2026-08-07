@@ -8,7 +8,6 @@ import {
   OUTCOME_STATUSES,
   PIPELINE_TYPES,
   PIC_SALUTATIONS,
-  formatPicWithSalutation,
   isPicSalutation,
   type OutcomeStatus,
   type PaymentTermLine,
@@ -17,7 +16,11 @@ import {
   type PipelineType,
   type ProspectOption,
 } from "@/lib/types/database";
-import { pipelineDetailPath, pipelineSlugFor } from "@/lib/pipelinePaths";
+import {
+  createPipelineAction,
+  updatePipelineAction,
+} from "@/app/dashboard/pipeline/actions";
+import { pipelineDetailPath } from "@/lib/pipelinePaths";
 import {
   formatNumberAsThousands,
   formatThousandsInput,
@@ -32,7 +35,6 @@ import {
   validatePaymentTerms,
   type PriceValidityDays,
 } from "@/lib/quoteTerms";
-import { clipText, formatIdrShort, logSalesActivity } from "@/lib/salesActivity";
 
 interface CustomerPicOption {
   id: string;
@@ -263,194 +265,73 @@ export function PipelineForm({
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
 
     const customerName = selectedCustomer?.name ?? "customer";
 
     if (project) {
-      const slug = pipelineSlugFor({
+      const result = await updatePipelineAction({
         id: project.id,
         no_quote: project.no_quote,
+        previous: {
+          pipeline_name: project.pipeline_name,
+          customer_id: project.customer_id,
+          pic_name: project.pic_name,
+          pic_salutation: project.pic_salutation,
+          pipeline_type: project.pipeline_type,
+          progress_type: project.progress_type,
+          outcome_status: project.outcome_status,
+          prospect: project.prospect,
+          target_closing_at: project.target_closing_at,
+        },
         pipeline_name: projectName,
+        customer_id: customerId,
+        customer_name: customerName,
+        pic_name: picName.trim(),
+        pic_salutation: picSalutation,
+        pipeline_type: projectType,
+        progress_type: progressType,
+        outcome_status: outcomeStatus,
+        prospect,
+        target_closing_at: targetClosingAt,
+        backPath,
       });
-
-      const changes: string[] = [];
-      if (project.pipeline_name !== projectName) changes.push(`Name → ${projectName}`);
-      if (project.customer_id !== customerId) changes.push(`Customer → ${customerName}`);
-      const prevPic = formatPicWithSalutation(project.pic_salutation, project.pic_name);
-      const nextPic = formatPicWithSalutation(picSalutation, picName.trim());
-      if (prevPic !== nextPic) changes.push(`PIC → ${nextPic}`);
-      if ((project.pipeline_type ?? "Project") !== projectType) {
-        changes.push(`Type → ${projectType}`);
-      }
-      if (project.progress_type !== progressType) changes.push(`Progress → ${progressType}`);
-      if ((project.outcome_status ?? "") !== (outcomeStatus || "")) {
-        changes.push(`Outcome → ${outcomeStatus || "cleared"}`);
-      }
-      if (project.prospect !== prospect) changes.push(`Heat → ${prospect}`);
-      const prevClosing = project.target_closing_at?.slice(0, 10) ?? "";
-      if (prevClosing !== (targetClosingAt || "")) {
-        changes.push(`Target closing → ${targetClosingAt || "cleared"}`);
-      }
-
-      const detailPath =
-        backPath ??
-        pipelineDetailPath({
-          id: project.id,
-          no_quote: project.no_quote,
-          pipeline_name: projectName,
-          slug,
-        });
-
-      // No-op save: leave quietly — do not clutter Sales Activity
-      if (changes.length === 0) {
-        setLoading(false);
-        router.push(detailPath);
-        router.refresh();
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from("pipelines")
-        .update({
-          pipeline_name: projectName,
-          customer_id: customerId,
-          pic_name: picName.trim(),
-          pic_salutation: picSalutation,
-          pipeline_type: projectType,
-          progress_type: progressType,
-          outcome_status: outcomeStatus || null,
-          prospect,
-          target_closing_at: targetClosingAt || null,
-          slug,
-        })
-        .eq("id", project.id);
 
       setLoading(false);
-      if (updateError) {
-        setError(updateError.message);
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
-
-      await logSalesActivity(supabase, {
-        actorId: user.id,
-        actionType: "pipeline_updated",
-        entityType: "pipeline",
-        entityId: project.id,
-        entityLabel: `${project.no_quote} · ${projectName}`,
-        summary: `Edited pipeline ${project.no_quote} “${projectName}”`,
-        details: changes.join(" · "),
-      });
-
-      router.push(detailPath);
+      router.push(result.redirectTo);
     } else {
-      const { data: allocated, error: allocError } = await supabase.rpc(
-        "allocate_next_quote_number"
-      );
-      if (allocError || !allocated) {
+      if (!isPicSalutation(picSalutation)) {
         setLoading(false);
-        setError(allocError?.message ?? "Failed to allocate quote number.");
+        setError("PIC salutation is required (Mr. / Mrs. / Ms.).");
         return;
       }
 
-      const alloc = allocated as {
-        quote_base: string;
-        no_quote: string;
-        quote_revision: number;
-      };
-
-      const trimmedUpdate = initialUpdate.trim();
-      const { data: inserted, error: insertError } = await supabase
-        .from("pipelines")
-        .insert({
-          no_quote: alloc.no_quote,
-          quote_base: alloc.quote_base,
-          quote_revision: alloc.quote_revision ?? 0,
-          pipeline_name: projectName,
-          customer_id: customerId,
-          pic_name: picName.trim(),
-          pic_salutation: picSalutation,
-          value: numValue,
-          pipeline_type: projectType,
-          progress_type: progressType,
-          outcome_status: null,
-          prospect,
-          status: "Open",
-          weekly_update: trimmedUpdate || null,
-          target_closing_at: targetClosingAt || null,
-          price_validity_days: priceValidityDays,
-          delivery_weeks: deliveryWeeksNum,
-          payment_terms: paymentTermsPayload,
-          sales_id: user.id,
-        })
-        .select("id")
-        .single();
-
-      if (insertError || !inserted?.id) {
-        setLoading(false);
-        setError(insertError?.message ?? "Failed to create pipeline");
-        return;
-      }
-
-      const slug = pipelineSlugFor({
-        id: inserted.id,
-        no_quote: alloc.no_quote,
+      const result = await createPipelineAction({
         pipeline_name: projectName,
-      });
-
-      await supabase.from("pipelines").update({ slug }).eq("id", inserted.id);
-
-      if (trimmedUpdate) {
-        const { error: updateHistoryError } = await supabase.from("pipeline_updates").insert({
-          pipeline_id: inserted.id,
-          content: trimmedUpdate,
-          created_by: user.id,
-        });
-        if (updateHistoryError) {
-          setLoading(false);
-          setError(
-            `Pipeline created but initial update failed to save: ${updateHistoryError.message}`
-          );
-          router.push(
-            pipelineDetailPath({
-              id: inserted.id,
-              no_quote: alloc.no_quote,
-              pipeline_name: projectName,
-              slug,
-            })
-          );
-          router.refresh();
-          return;
-        }
-      }
-
-      await logSalesActivity(supabase, {
-        actorId: user.id,
-        actionType: "pipeline_created",
-        entityType: "pipeline",
-        entityId: inserted.id,
-        entityLabel: `${alloc.no_quote} · ${projectName}`,
-        summary: `Created pipeline ${alloc.no_quote} “${projectName}” for ${customerName} (${formatIdrShort(numValue)}, ${progressType})`,
-        details: trimmedUpdate ? `Initial note: ${clipText(trimmedUpdate)}` : null,
+        customer_id: customerId,
+        customer_name: customerName,
+        pic_name: picName.trim(),
+        pic_salutation: picSalutation,
+        value: numValue,
+        pipeline_type: projectType,
+        progress_type: progressType,
+        prospect,
+        target_closing_at: targetClosingAt,
+        initial_update: initialUpdate.trim(),
+        price_validity_days: priceValidityDays,
+        delivery_weeks: deliveryWeeksNum,
+        payment_terms: paymentTermsPayload,
       });
 
       setLoading(false);
-      router.push(
-        pipelineDetailPath({
-          id: inserted.id,
-          no_quote: alloc.no_quote,
-          pipeline_name: projectName,
-          slug,
-        })
-      );
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.push(result.redirectTo);
     }
     router.refresh();
   }

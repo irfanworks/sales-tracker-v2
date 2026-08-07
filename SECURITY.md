@@ -15,8 +15,9 @@ Dokumen ini menjelaskan langkah keamanan yang diterapkan dan rekomendasi untuk d
 
 ### 2. Secure Cookies (lib/supabase/middleware.ts)
 
-- **Production**: `secure`, `httpOnly`, `sameSite: lax` untuk auth cookies
-- Cookie diset pada response (bukan request) agar persist
+- Session cookies are set via `@supabase/ssr` **with the options Supabase provides** (path, `SameSite`, `Secure` in prod, and httpOnly **only when Supabase marks that cookie httpOnly**).
+- **Do not force `httpOnly: true` on every auth cookie** — that blocks `createBrowserClient` from reading the session, so client saves fail with “Not authenticated” even while Server Components still work.
+- Prefer Server Actions for privileged writes (e.g. pipeline create/update) so auth uses httpOnly-friendly server cookies.
 
 ### 3. Row Level Security (RLS) di Supabase
 

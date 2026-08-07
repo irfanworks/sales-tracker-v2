@@ -74,17 +74,20 @@ export function formatPaymentTermsForDoc(
 
 /** Build the exact placeholder map used by the DOCX template. */
 export function buildQuotationData(source: QuotationSource): QuotationTemplateFields {
-  const picName = source.pic_name?.trim() || "";
+  const picNameOnly = source.pic_name?.trim() || "";
   const picSalutation = source.pic_salutation?.trim() || "";
+  const picFull = formatPicWithSalutation(picSalutation || null, picNameOnly || null);
+  // Official letterhead uses {{pic_name}} for Attn/Dear — prefer "Mr. Name" when salutation set
+  const picForLetter = picFull !== "—" ? picFull : EMPTY;
 
   return {
     no_quote: text(source.no_quote),
-    date: format(source.date ?? new Date(), "dd MMM yyyy"),
+    date: format(source.date ?? new Date(), "dd MMMM yyyy"),
     customer_name: text(source.customer_name),
     customer_sector: text(source.customer_sector),
     pic_salutation: picSalutation,
-    pic_name: text(source.pic_name),
-    pic_full: formatPicWithSalutation(picSalutation || null, picName || null),
+    pic_name: picForLetter,
+    pic_full: picForLetter,
     pipeline_name: text(source.pipeline_name),
     pipeline_type: text(source.pipeline_type),
     progress_type: text(source.progress_type),

@@ -1,8 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const isProduction = process.env.NODE_ENV === "production";
-
+/**
+ * Refresh the Auth session and forward Set-Cookie on the response.
+ * Do NOT force httpOnly on every cookie — @supabase/ssr sets per-cookie
+ * flags; forcing httpOnly breaks createBrowserClient (client getUser → null).
+ */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -15,17 +18,13 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, {
-              path: "/",
-              ...options,
-              ...(isProduction && {
-                secure: true,
-                httpOnly: true,
-                sameSite: "lax" as const,
-              }),
-            })
-          );
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, options);
+          });
         },
       },
     }
