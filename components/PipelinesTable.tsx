@@ -8,15 +8,19 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { ProgressBadge } from "@/components/ProgressBadge";
 import { ProspectBadge } from "@/components/ProspectBadge";
-import { OutcomeBadge } from "@/components/OutcomeBadge";
+import {
+  OutcomeBulkButtons,
+  OutcomeStatusSwitcher,
+} from "@/components/OutcomeStatusSwitcher";
 import { PipelineTypeBadge } from "@/components/PipelineTypeBadge";
 import { PipelineStatusToggle } from "@/components/PipelineStatusToggle";
 import { pipelineDetailPath } from "@/lib/pipelinePaths";
 import { customerDetailPath } from "@/lib/customerPaths";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useCurrencyScope } from "@/components/ui/CurrencyToggle";
-import type { LifecycleStatus } from "@/lib/types/database";
+import type { LifecycleStatus, OutcomeStatus } from "@/lib/types/database";
 import { logSalesActivity } from "@/lib/salesActivity";
+import { bulkSetPipelineOutcomeAction } from "@/app/dashboard/pipeline/actions";
 
 const linkClass =
   "font-medium text-cyan-700 transition hover:text-cyan-800 hover:underline";
@@ -53,6 +57,7 @@ export function PipelinesTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkOutcomeSaving, setBulkOutcomeSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function formatValue(value: number | null) {
@@ -142,6 +147,43 @@ export function PipelinesTable({
     router.refresh();
   }
 
+  async function handleBulkOutcome(outcome: OutcomeStatus | null) {
+    if (selectedIds.size === 0) return;
+    const label = outcome ?? "cleared";
+    const confirmed = window.confirm(
+      `Set outcome to “${label}” for ${selectedIds.size} selected pipeline${selectedIds.size === 1 ? "" : "s"}?`
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    setBulkOutcomeSaving(true);
+    const ids = Array.from(selectedIds);
+    const rows = projects
+      .filter((p) => selectedIds.has(p.id))
+      .map((p) => {
+        const previousOutcome: OutcomeStatus | null =
+          p.outcome_status === "Win" ||
+          p.outcome_status === "Lose" ||
+          p.outcome_status === "On Hold"
+            ? p.outcome_status
+            : null;
+        return {
+          id: p.id,
+          label: `${p.no_quote} · ${p.pipeline_name}`,
+          previousOutcome,
+        };
+      });
+
+    const result = await bulkSetPipelineOutcomeAction({ ids, outcome, rows });
+    setBulkOutcomeSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setSelectedIds(new Set());
+    router.refresh();
+  }
+
   if (projects.length === 0) {
     return (
       <EmptyState
@@ -165,17 +207,27 @@ export function PipelinesTable({
         <div className="border-b border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</div>
       )}
       {someSelected && (
-        <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5">
           <span className="text-sm font-medium text-slate-600">{selectedIds.size} selected</span>
+          <OutcomeBulkButtons
+            disabled={bulkDeleting || bulkOutcomeSaving}
+            onSelect={handleBulkOutcome}
+          />
           <button
             type="button"
             onClick={handleBulkDelete}
-            disabled={bulkDeleting}
+            disabled={bulkDeleting || bulkOutcomeSaving}
             className="btn-secondary gap-2 text-red-700 hover:border-red-200 hover:bg-red-50"
           >
             {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             Delete selected
           </button>
+          {bulkOutcomeSaving && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Updating outcomes…
+            </span>
+          )}
         </div>
       )}
     </>
@@ -232,7 +284,14 @@ export function PipelinesTable({
                   <PipelineTypeBadge value={p.pipeline_type ?? "Project"} />
                   <ProgressBadge value={p.progress_type} />
                   <ProspectBadge value={p.prospect} />
-                  <OutcomeBadge value={p.outcome_status} />
+                </div>
+                <div className="mt-2.5">
+                  <OutcomeStatusSwitcher
+                    pipelineId={p.id}
+                    value={p.outcome_status}
+                    pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
+                    size="sm"
+                  />
                 </div>
                 <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500">
                   <span>{p.sales_name ?? "—"}</span>
@@ -354,8 +413,13 @@ export function PipelinesTable({
                 <td className="whitespace-nowrap px-4 py-3.5">
                   <ProspectBadge value={p.prospect} />
                 </td>
-                <td className="whitespace-nowrap px-4 py-3.5">
-                  <OutcomeBadge value={p.outcome_status} />
+                <td className="min-w-[200px] px-4 py-3.5">
+                  <OutcomeStatusSwitcher
+                    pipelineId={p.id}
+                    value={p.outcome_status}
+                    pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
+                    size="sm"
+                  />
                 </td>
                 <td className="min-w-[80px] px-4 py-3.5 text-slate-600">{p.sales_name ?? "—"}</td>
                 <td className="whitespace-nowrap px-4 py-3.5 text-slate-500">

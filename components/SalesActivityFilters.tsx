@@ -1,10 +1,14 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { format, subDays, startOfWeek } from "date-fns";
 import { CalendarRange, Filter, UserRound, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import {
+  daysAgoJakarta,
+  jakartaTodayKey,
+  startOfWeekJakarta,
+} from "@/lib/timezone";
 
 interface SalesOption {
   id: string;
@@ -14,14 +18,11 @@ interface SalesOption {
 type Preset = "today" | "week" | "7d" | "14d" | "30d";
 
 function presetRange(preset: Preset): { from: string; to: string } {
-  const to = format(new Date(), "yyyy-MM-dd");
+  const to = jakartaTodayKey();
   if (preset === "today") return { from: to, to };
-  if (preset === "week") {
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    return { from: format(weekStart, "yyyy-MM-dd"), to };
-  }
+  if (preset === "week") return { from: startOfWeekJakarta(to), to };
   const days = preset === "7d" ? 6 : preset === "14d" ? 13 : 29;
-  return { from: format(subDays(new Date(), days), "yyyy-MM-dd"), to };
+  return { from: daysAgoJakarta(days, to), to };
 }
 
 function FilterTile({
@@ -80,19 +81,19 @@ export function SalesActivityFilters({
   }
 
   const hasFilters = Boolean(from || to || (showSalesFilter && salesId));
-  const today = format(new Date(), "yyyy-MM-dd");
-  const weekFrom = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const today = jakartaTodayKey();
+  const weekFrom = startOfWeekJakarta(today);
 
   const activePreset: Preset | null =
     from === today && to === today
       ? "today"
       : from === weekFrom && to === today
         ? "week"
-        : from === format(subDays(new Date(), 6), "yyyy-MM-dd") && to === today
+        : from === daysAgoJakarta(6, today) && to === today
           ? "7d"
-          : from === format(subDays(new Date(), 13), "yyyy-MM-dd") && to === today
+          : from === daysAgoJakarta(13, today) && to === today
             ? "14d"
-            : from === format(subDays(new Date(), 29), "yyyy-MM-dd") && to === today
+            : from === daysAgoJakarta(29, today) && to === today
               ? "30d"
               : null;
 
@@ -135,7 +136,9 @@ export function SalesActivityFilters({
               )}
             </p>
             <p className="filter-panel__sub">
-              {hasFilters ? "Active refinements applied" : "Pick a range to scan activity"}
+              {hasFilters
+                ? "Active refinements applied · GMT+7"
+                : "Pick a range in GMT+7 (WIB)"}
             </p>
           </div>
         </div>
@@ -180,7 +183,7 @@ export function SalesActivityFilters({
 
       <div className="filter-panel__body">
         <div>
-          <p className="filter-section-label">Quick range</p>
+          <p className="filter-section-label">Quick range · GMT+7</p>
           <div className="filter-presets">
             {presets.map((p) => (
               <button

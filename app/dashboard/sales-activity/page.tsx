@@ -1,10 +1,14 @@
 import { Suspense } from "react";
-import { format, subDays } from "date-fns";
 import { getAuthUser, getProfile, getSalesOptions, getSupabase } from "@/lib/auth";
 import { SalesActivityFilters } from "@/components/SalesActivityFilters";
 import { SalesActivityFeed } from "@/components/SalesActivityFeed";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Activity } from "lucide-react";
+import {
+  jakartaDateKey,
+  jakartaDayBoundsUtc,
+  daysAgoJakarta,
+} from "@/lib/timezone";
 
 function parseDateOnly(value: string | undefined): string | null {
   if (!value) return null;
@@ -22,16 +26,15 @@ export default async function SalesActivityPage({
   const profile = await getProfile();
   const isAdmin = profile?.role === "admin";
 
-  const defaultFrom = format(subDays(new Date(), 13), "yyyy-MM-dd");
-  const defaultTo = format(new Date(), "yyyy-MM-dd");
+  const defaultFrom = daysAgoJakarta(13);
+  const defaultTo = jakartaDateKey(new Date());
 
   const from = parseDateOnly(raw.from) ?? defaultFrom;
   const to = parseDateOnly(raw.to) ?? defaultTo;
   const salesId = isAdmin ? raw.sales_id : user?.id;
 
-  // Inclusive end-of-day in UTC+ish: use next day exclusive upper bound via to + 1 day at midnight
-  const toExclusive = format(new Date(`${to}T00:00:00`), "yyyy-MM-dd");
-  const toEnd = new Date(`${toExclusive}T23:59:59.999`);
+  const { startIso } = jakartaDayBoundsUtc(from);
+  const { endIso } = jakartaDayBoundsUtc(to);
 
   const supabase = await getSupabase();
   let query = supabase
@@ -39,8 +42,8 @@ export default async function SalesActivityPage({
     .select(
       "id, created_at, actor_id, action_type, entity_type, entity_id, entity_label, summary, details"
     )
-    .gte("created_at", `${from}T00:00:00.000`)
-    .lte("created_at", toEnd.toISOString())
+    .gte("created_at", startIso)
+    .lte("created_at", endIso)
     .order("created_at", { ascending: false })
     .limit(300);
 
@@ -87,8 +90,8 @@ export default async function SalesActivityPage({
         title="Sales Activity"
         description={
           isAdmin
-            ? "Weekly review feed for Direksi — only real creates and changes (empty saves are ignored)."
-            : "Your activity log — only when you add or change data."
+            ? "Weekly review feed for Direksi — only real creates and changes (empty saves are ignored). Times in GMT+7 (WIB)."
+            : "Your activity log — only when you add or change data. Times in GMT+7 (WIB)."
         }
       />
       <Suspense fallback={<div className="card shimmer h-24 rounded-2xl" />}>
@@ -105,6 +108,7 @@ export default async function SalesActivityPage({
         <span className="font-semibold text-slate-800">{from}</span>
         {" → "}
         <span className="font-semibold text-slate-800">{to}</span>
+        {" · GMT+7"}
         {!isAdmin ? " · your actions only" : ""}.
       </p>
       <SalesActivityFeed activities={feed} />

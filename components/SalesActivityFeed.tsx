@@ -1,10 +1,15 @@
 import Link from "next/link";
-import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import {
   SALES_ACTIVITY_ACTION_LABELS,
   SALES_ACTIVITY_ACTION_VERB,
   type SalesActivityActionType,
 } from "@/lib/salesActivity";
+import {
+  dayHeadingJakarta,
+  formatJakartaDateTime,
+  formatJakartaTime,
+} from "@/lib/timezone";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   Activity,
@@ -111,10 +116,7 @@ function metaFor(actionType: string) {
 }
 
 function dayHeading(iso: string): string {
-  const d = new Date(iso);
-  if (isToday(d)) return "Today";
-  if (isYesterday(d)) return "Yesterday";
-  return format(d, "EEEE, dd MMM yyyy");
+  return dayHeadingJakarta(iso);
 }
 
 function entityHref(row: SalesActivityRow): string | null {
@@ -219,9 +221,9 @@ export function SalesActivityFeed({ activities }: { activities: SalesActivityRow
                     <time
                       className="pt-0.5 text-sm font-bold tabular-nums text-slate-500"
                       dateTime={row.created_at}
-                      title={format(new Date(row.created_at), "dd MMM yyyy, HH:mm")}
+                      title={`${formatJakartaDateTime(row.created_at)} GMT+7`}
                     >
-                      {format(new Date(row.created_at), "HH:mm")}
+                      {formatJakartaTime(row.created_at)}
                     </time>
 
                     <div className="min-w-0">

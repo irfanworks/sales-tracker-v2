@@ -265,3 +265,87 @@ export async function createPipelineAction(
   revalidatePath(detailPath);
   return { ok: true, redirectTo: detailPath };
 }
+
+export type SimpleActionResult = { ok: true } | { ok: false; error: string };
+
+function normalizeOutcome(
+  value: OutcomeStatus | "" | null | undefined
+): OutcomeStatus | null {
+  if (value === "Win" || value === "Lose" || value === "On Hold") return value;
+  return null;
+}
+
+export async function setPipelineOutcomeAction(input: {
+  id: string;
+  outcome: OutcomeStatus | null;
+  previousOutcome?: OutcomeStatus | null;
+  pipelineLabel?: string | null;
+}): Promise<SimpleActionResult> {
+  const user = await getAuthUser();
+  if (!user) return { ok: false, error: "Not authenticated. Please sign in again." };
+
+  const next = normalizeOutcome(input.outcome);
+  const prev = normalizeOutcome(input.previousOutcome);
+  if (next === prev) return { ok: true };
+
+  const supabase = await getSupabase();
+  const { error } = await supabase
+    .from("pipelines")
+    .update({ outcome_status: next })
+    .eq("id", input.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  const label = input.pipelineLabel?.trim() || null;
+  await logSalesActivity(supabase, {
+    actorId: user.id,
+    actionType: "pipeline_updated",
+    entityType: "pipeline",
+    entityId: input.id,
+    entityLabel: label,
+    summary: `Set outcome${label ? ` on ${label}` : ""} to ${next ?? "cleared"}`,
+    details: `Outcome → ${next ?? "cleared"}`,
+  });
+
+  revalidatePath("/dashboard/pipeline");
+  revalidatePath(`/dashboard/pipeline/${input.id}`);
+  return { ok: true };
+}
+
+export async function bulkSetPipelineOutcomeAction(input: {
+  ids: string[];
+  outcome: OutcomeStatus | null;
+  rows?: { id: string; label: string; previousOutcome?: OutcomeStatus | null }[];
+}): Promise<SimpleActionResult> {
+  const user = await getAuthUser();
+  if (!user) return { ok: false, error: "Not authenticated. Please sign in again." };
+
+  const ids = [...new Set(input.ids.filter(Boolean))];
+  if (ids.length === 0) return { ok: false, error: "No pipelines selected." };
+
+  const next = normalizeOutcome(input.outcome);
+  const supabase = await getSupabase();
+  const { error } = await supabase
+    .from("pipelines")
+    .update({ outcome_status: next })
+    .in("id", ids);
+
+  if (error) return { ok: false, error: error.message };
+
+  const rowMap = new Map((input.rows ?? []).map((r) => [r.id, r]));
+  for (const id of ids) {
+    const row = rowMap.get(id);
+    await logSalesActivity(supabase, {
+      actorId: user.id,
+      actionType: "pipeline_updated",
+      entityType: "pipeline",
+      entityId: id,
+      entityLabel: row?.label ?? null,
+      summary: `Set outcome${row?.label ? ` on ${row.label}` : ""} to ${next ?? "cleared"}`,
+      details: `Outcome → ${next ?? "cleared"}`,
+    });
+  }
+
+  revalidatePath("/dashboard/pipeline");
+  return { ok: true };
+}
