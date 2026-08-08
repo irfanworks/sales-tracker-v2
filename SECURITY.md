@@ -13,11 +13,11 @@ Dokumen ini menjelaskan langkah keamanan yang diterapkan dan rekomendasi untuk d
 - **Strict-Transport-Security (HSTS)** — Wajib HTTPS, 1 tahun
 - **Content-Security-Policy (CSP)** — Batasi sumber script, style, connect (whitelist Supabase)
 
-### 2. Secure Cookies (lib/supabase/middleware.ts)
+### 2. Secure Cookies & session cache (lib/supabase/middleware.ts)
 
-- Session cookies are set via `@supabase/ssr` **with the options Supabase provides** (path, `SameSite`, `Secure` in prod, and httpOnly **only when Supabase marks that cookie httpOnly**).
-- **Do not force `httpOnly: true` on every auth cookie** — that blocks `createBrowserClient` from reading the session, so client saves fail with “Not authenticated” even while Server Components still work.
-- Prefer Server Actions for privileged writes (e.g. pipeline create/update) so auth uses httpOnly-friendly server cookies.
+- Session cookies use options provided by `@supabase/ssr` (do **not** force `httpOnly` on every cookie).
+- Middleware refreshes the session on (almost) every request and applies `Cache-Control: private, no-store` on auth responses / dashboard / login / API so CDNs and the browser do not serve stale JWTs (avoids “delete cookies” loops).
+- Prefer Server Actions for privileged writes (pipeline, create customer) so mutations use server cookie auth.
 
 ### 3. Row Level Security (RLS) di Supabase
 

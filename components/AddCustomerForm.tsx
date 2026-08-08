@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, UserPlus, Trash2 } from "lucide-react";
 import { SECTOR_OPTIONS } from "@/lib/types/database";
-import { slugWithId } from "@/lib/slugify";
+import { createCustomerAction } from "@/app/dashboard/customers/actions";
 import {
   CustomerNameAutocomplete,
   findExactCustomerMatch,
@@ -71,42 +70,21 @@ export function AddCustomerForm({
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { data: customer, error: insertError } = await supabase
-      .from("customers")
-      .insert({
-        name: name.trim(),
-        sector: sector || null,
-      })
-      .select("id")
-      .single();
-    if (insertError) {
-      setError(insertError.message);
-      setLoading(false);
+    const result = await createCustomerAction({
+      name,
+      sector: sector || null,
+      pics,
+    });
+    setLoading(false);
+
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
-    if (customer?.id) {
-      await supabase
-        .from("customers")
-        .update({ slug: slugWithId(name.trim(), customer.id) })
-        .eq("id", customer.id);
-    }
-    const picsToInsert = picsWithName;
-    if (customer?.id) {
-      await supabase.from("customer_pics").insert(
-        picsToInsert.map((p) => ({
-          customer_id: customer.id,
-          nama: p.nama.trim(),
-          email: p.email.trim() || null,
-          no_hp: p.no_hp.trim() || null,
-          jabatan: p.jabatan.trim() || null,
-        }))
-      );
-    }
+
     setName("");
     setSector("");
     setPics([emptyPic()]);
-    setLoading(false);
     router.refresh();
   }
 
@@ -164,7 +142,10 @@ export function AddCustomerForm({
         <p className="mb-2 text-xs text-slate-500">At least one PIC with a name is required.</p>
         <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
           {pics.map((pic, i) => (
-            <div key={i} className="grid grid-cols-1 gap-3 rounded border border-slate-100 bg-white p-3 md:grid-cols-2 lg:grid-cols-4">
+            <div
+              key={i}
+              className="grid grid-cols-1 gap-3 rounded border border-slate-100 bg-white p-3 md:grid-cols-2 lg:grid-cols-4"
+            >
               <input
                 type="text"
                 value={pic.nama}

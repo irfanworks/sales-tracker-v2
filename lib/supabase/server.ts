@@ -12,13 +12,20 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet: { name: string; value: string; options?: Parameters<typeof cookieStore.set>[2] }[]) {
+        setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options?: Parameters<typeof cookieStore.set>[2];
+          }[],
+          _headers?: Record<string, string>
+        ) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
           } catch {
-            // ignore in Server Components
+            // Called from a Server Component — middleware/proxy owns cookie writes.
           }
         },
       },
