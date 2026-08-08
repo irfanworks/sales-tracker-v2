@@ -60,11 +60,17 @@ export async function createCustomerAction(
     };
   }
 
+  // slug is NOT NULL — generate id first so slugWithId can include the short id suffix
+  const id = crypto.randomUUID();
+  const slug = slugWithId(name, id);
+
   const { data: customer, error: insertError } = await supabase
     .from("customers")
     .insert({
+      id,
       name,
       sector: input.sector?.trim() || null,
+      slug,
     })
     .select("id")
     .single();
@@ -73,20 +79,6 @@ export async function createCustomerAction(
     return {
       ok: false,
       error: insertError?.message ?? "Failed to create customer.",
-    };
-  }
-
-  const slug = slugWithId(name, customer.id);
-  const { error: slugError } = await supabase
-    .from("customers")
-    .update({ slug })
-    .eq("id", customer.id);
-
-  if (slugError) {
-    // Customer exists; surface slug failure so URL permalinks aren't silently broken
-    return {
-      ok: false,
-      error: `Customer created but slug failed: ${slugError.message}`,
     };
   }
 
