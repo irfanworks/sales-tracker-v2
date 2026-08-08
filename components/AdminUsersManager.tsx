@@ -9,6 +9,7 @@ import {
   updateManagedUser,
 } from "@/app/dashboard/settings/userActions";
 import { formatNumberAsThousands, formatThousandsInput, parseThousandsInput } from "@/lib/formatThousands";
+import { confirmDelete } from "@/lib/confirmDelete";
 
 export type ManagedUser = {
   id: string;
@@ -171,8 +172,8 @@ export function AdminUsersManager({
     });
   }
 
-  function confirmDelete(user: ManagedUser) {
-    const ok = window.confirm(
+  function handleDeleteUser(user: ManagedUser) {
+    const ok = confirmDelete(
       `Delete ${user.display_name} (${user.email})?\n\n` +
         "This permanently removes the account and all pipelines / prospects owned by this user. This cannot be undone."
     );
@@ -428,7 +429,7 @@ export function AdminUsersManager({
                       </button>
                       <button
                         type="button"
-                        onClick={() => confirmDelete(u)}
+                        onClick={() => handleDeleteUser(u)}
                         className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40"
                         disabled={pending || isSelf}
                         title={isSelf ? "You cannot delete your own account" : "Delete user"}

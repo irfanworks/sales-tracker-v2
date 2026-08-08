@@ -21,6 +21,7 @@ import { useCurrencyScope } from "@/components/ui/CurrencyToggle";
 import type { LifecycleStatus, OutcomeStatus } from "@/lib/types/database";
 import { logSalesActivity } from "@/lib/salesActivity";
 import { bulkSetPipelineOutcomeAction } from "@/app/dashboard/pipeline/actions";
+import { confirmDelete } from "@/lib/confirmDelete";
 
 const linkClass =
   "font-medium text-cyan-700 transition hover:text-cyan-800 hover:underline";
@@ -88,8 +89,14 @@ export function PipelinesTable({
   }
 
   async function handleDelete(id: string) {
-    setError(null);
     const row = projects.find((p) => p.id === id);
+    const label = row
+      ? `${row.no_quote} · ${row.pipeline_name}`
+      : "this pipeline";
+    if (!confirmDelete(`Delete pipeline “${label}”?\n\nThis cannot be undone.`)) {
+      return;
+    }
+    setError(null);
     setDeletingId(id);
     const supabase = createClient();
     const { error: deleteError } = await supabase.from("pipelines").delete().eq("id", id);
@@ -117,6 +124,14 @@ export function PipelinesTable({
 
   async function handleBulkDelete() {
     if (selectedIds.size === 0) return;
+    const n = selectedIds.size;
+    if (
+      !confirmDelete(
+        `Delete ${n} selected pipeline${n === 1 ? "" : "s"}?\n\nThis cannot be undone.`
+      )
+    ) {
+      return;
+    }
     setError(null);
     setBulkDeleting(true);
     const ids = Array.from(selectedIds);

@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import type { ProspectStatus } from "@/lib/types/database";
 import { formatPicWithSalutation } from "@/lib/types/database";
 import { logSalesActivity } from "@/lib/salesActivity";
+import { confirmDelete } from "@/lib/confirmDelete";
 
 const linkClass =
   "font-medium text-cyan-700 transition hover:text-cyan-800 hover:underline";
@@ -44,7 +45,7 @@ export function ProspectsTable({
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete(id: string, title: string) {
-    if (!window.confirm(`Delete prospect "${title}"? This cannot be undone.`)) return;
+    if (!confirmDelete(`Delete prospect “${title}”?\n\nThis cannot be undone.`)) return;
     setError(null);
     setDeletingId(id);
     const supabase = createClient();

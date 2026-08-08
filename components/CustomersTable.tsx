@@ -9,6 +9,7 @@ import { Pencil, Trash2, Loader2, Users } from "lucide-react";
 import type { Customer, CustomerPic } from "@/lib/types/database";
 import { customerDetailPath } from "@/lib/customerPaths";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { confirmDelete } from "@/lib/confirmDelete";
 
 interface CustomerRow extends Customer {
   pics?: CustomerPic[];
@@ -39,6 +40,15 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
   }
 
   async function handleDelete(id: string) {
+    const row = customers.find((c) => c.id === id);
+    const label = row?.name?.trim() || "this customer";
+    if (
+      !confirmDelete(
+        `Delete customer “${label}”?\n\nRelated pipelines/prospects may be affected. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
     setError(null);
     setDeletingId(id);
     const supabase = createClient();
@@ -53,6 +63,14 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
 
   async function handleBulkDelete() {
     if (selectedIds.size === 0) return;
+    const n = selectedIds.size;
+    if (
+      !confirmDelete(
+        `Delete ${n} selected customer${n === 1 ? "" : "s"}?\n\nRelated pipelines/prospects may be affected. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
     setError(null);
     setBulkDeleting(true);
     const supabase = createClient();
