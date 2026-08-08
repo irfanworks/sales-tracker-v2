@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import type { ProspectStatus } from "@/lib/types/database";
 import { formatPicWithSalutation } from "@/lib/types/database";
 import { logSalesActivity } from "@/lib/salesActivity";
-import { confirmDelete } from "@/lib/confirmDelete";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 const linkClass =
   "font-medium text-cyan-700 transition hover:text-cyan-800 hover:underline";
@@ -43,19 +43,21 @@ export function ProspectsTable({
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ id: string; title: string } | null>(null);
 
-  async function handleDelete(id: string, title: string) {
-    if (!confirmDelete(`Delete prospect “${title}”?\n\nThis cannot be undone.`)) return;
+  async function executeDelete() {
+    if (!pending) return;
+    const { id, title } = pending;
     setError(null);
     setDeletingId(id);
     const supabase = createClient();
     const { error: deleteError } = await supabase.from("prospects").delete().eq("id", id);
     setDeletingId(null);
+    setPending(null);
     if (deleteError) {
       setError(deleteError.message);
       return;
     }
-    // Prior activity for this prospect is purged by DB trigger (029).
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -84,6 +86,19 @@ export function ProspectsTable({
 
   return (
     <div className="overflow-x-auto">
+      <ConfirmDeleteDialog
+        open={pending != null}
+        title={pending ? `Delete prospect “${pending.title}”?` : ""}
+        message="This cannot be undone."
+        confirmLabel="Yes, delete"
+        busy={deletingId != null}
+        onCancel={() => {
+          if (deletingId == null) setPending(null);
+        }}
+        onConfirm={() => {
+          void executeDelete();
+        }}
+      />
       {error && (
         <p className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
       )}
@@ -156,7 +171,7 @@ export function ProspectsTable({
                     className="btn-ghost p-2 text-red-500 hover:text-red-700"
                     title="Delete"
                     disabled={deletingId === p.id}
-                    onClick={() => handleDelete(p.id, p.title)}
+                    onClick={() => setPending({ id: p.id, title: p.title })}
                   >
                     {deletingId === p.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

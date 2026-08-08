@@ -9,11 +9,15 @@ import { Pencil, Trash2, Loader2, Users } from "lucide-react";
 import type { Customer, CustomerPic } from "@/lib/types/database";
 import { customerDetailPath } from "@/lib/customerPaths";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { confirmDelete } from "@/lib/confirmDelete";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface CustomerRow extends Customer {
   pics?: CustomerPic[];
 }
+
+type PendingDelete =
+  | { type: "one"; id: string; label: string }
+  | { type: "bulk"; ids: string[]; count: number };
 
 export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
   const router = useRouter();
@@ -21,9 +25,11 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingDelete | null>(null);
 
   const allSelected = customers.length > 0 && selectedIds.size === customers.length;
   const someSelected = selectedIds.size > 0;
+  const busy = deletingId != null || bulkDeleting;
 
   function toggleSelectAll() {
     if (allSelected) setSelectedIds(new Set());
@@ -39,51 +45,59 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
     });
   }
 
-  async function handleDelete(id: string) {
+  function requestDeleteOne(id: string) {
     const row = customers.find((c) => c.id === id);
-    const label = row?.name?.trim() || "this customer";
-    if (
-      !confirmDelete(
-        `Delete customer “${label}”?\n\nRelated pipelines/prospects may be affected. This cannot be undone.`
-      )
-    ) {
-      return;
-    }
-    setError(null);
-    setDeletingId(id);
-    const supabase = createClient();
-    const { error: deleteError } = await supabase.from("customers").delete().eq("id", id);
-    setDeletingId(null);
-    if (deleteError) {
-      setError(deleteError.message);
-      return;
-    }
-    router.refresh();
+    setPending({
+      type: "one",
+      id,
+      label: row?.name?.trim() || "this customer",
+    });
   }
 
-  async function handleBulkDelete() {
+  function requestBulkDelete() {
     if (selectedIds.size === 0) return;
-    const n = selectedIds.size;
-    if (
-      !confirmDelete(
-        `Delete ${n} selected customer${n === 1 ? "" : "s"}?\n\nRelated pipelines/prospects may be affected. This cannot be undone.`
-      )
-    ) {
+    setPending({
+      type: "bulk",
+      ids: Array.from(selectedIds),
+      count: selectedIds.size,
+    });
+  }
+
+  async function executePendingDelete() {
+    if (!pending) return;
+    setError(null);
+
+    if (pending.type === "one") {
+      setDeletingId(pending.id);
+      const supabase = createClient();
+      const { error: deleteError } = await supabase
+        .from("customers")
+        .delete()
+        .eq("id", pending.id);
+      setDeletingId(null);
+      setPending(null);
+      if (deleteError) {
+        setError(deleteError.message);
+        return;
+      }
+      router.refresh();
       return;
     }
-    setError(null);
+
     setBulkDeleting(true);
     const supabase = createClient();
     const { error: deleteError } = await supabase
       .from("customers")
       .delete()
-      .in("id", Array.from(selectedIds));
+      .in("id", pending.ids);
     setBulkDeleting(false);
-    if (deleteError) setError(deleteError.message);
-    else {
-      setSelectedIds(new Set());
-      router.refresh();
+    setPending(null);
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
     }
+    setSelectedIds(new Set());
+    router.refresh();
   }
 
   if (customers.length === 0) {
@@ -96,6 +110,16 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
     );
   }
 
+  const dialogTitle =
+    pending?.type === "bulk"
+      ? `Delete ${pending.count} customer${pending.count === 1 ? "" : "s"}?`
+      : pending
+        ? `Delete customer “${pending.label}”?`
+        : "";
+
+  const dialogMessage =
+    "Related pipelines/prospects may be affected.\nThis cannot be undone.";
+
   const toolbar = (
     <>
       {error && (
@@ -106,8 +130,8 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
           <span className="text-sm font-medium text-slate-600">{selectedIds.size} selected</span>
           <button
             type="button"
-            onClick={handleBulkDelete}
-            disabled={bulkDeleting}
+            onClick={requestBulkDelete}
+            disabled={busy}
             className="btn-secondary gap-2 text-red-700 hover:border-red-200 hover:bg-red-50"
           >
             {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
@@ -120,6 +144,20 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
 
   return (
     <div>
+      <ConfirmDeleteDialog
+        open={pending != null}
+        title={dialogTitle}
+        message={dialogMessage}
+        confirmLabel="Yes, delete"
+        busy={busy}
+        onCancel={() => {
+          if (!busy) setPending(null);
+        }}
+        onConfirm={() => {
+          void executePendingDelete();
+        }}
+      />
+
       {toolbar}
 
       {/* Mobile cards */}
@@ -158,8 +196,8 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
                   </Link>
                   <button
                     type="button"
-                    onClick={() => handleDelete(c.id)}
-                    disabled={deletingId === c.id}
+                    onClick={() => requestDeleteOne(c.id)}
+                    disabled={busy}
                     className="btn-ghost gap-1 px-2 py-1.5 text-red-600 hover:bg-red-50"
                   >
                     {deletingId === c.id ? (
@@ -234,8 +272,8 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
                     </Link>
                     <button
                       type="button"
-                      onClick={() => handleDelete(c.id)}
-                      disabled={deletingId === c.id}
+                      onClick={() => requestDeleteOne(c.id)}
+                      disabled={busy}
                       className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                       title="Delete"
                     >

@@ -21,7 +21,7 @@ import { useCurrencyScope } from "@/components/ui/CurrencyToggle";
 import type { LifecycleStatus, OutcomeStatus } from "@/lib/types/database";
 import { logSalesActivity } from "@/lib/salesActivity";
 import { bulkSetPipelineOutcomeAction } from "@/app/dashboard/pipeline/actions";
-import { confirmDelete } from "@/lib/confirmDelete";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 const linkClass =
   "font-medium text-cyan-700 transition hover:text-cyan-800 hover:underline";
@@ -46,6 +46,10 @@ interface PipelineRow {
   sales_name?: string | null;
 }
 
+type PendingDelete =
+  | { type: "one"; id: string; label: string }
+  | { type: "bulk"; ids: string[]; count: number };
+
 export function PipelinesTable({
   projects,
   emptyMessage,
@@ -60,6 +64,7 @@ export function PipelinesTable({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkOutcomeSaving, setBulkOutcomeSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
 
   function formatValue(value: number | null) {
     if (value == null) return "—";
@@ -73,6 +78,7 @@ export function PipelinesTable({
 
   const allSelected = projects.length > 0 && selectedIds.size === projects.length;
   const someSelected = selectedIds.size > 0;
+  const deleteBusy = deletingId != null || bulkDeleting;
 
   function toggleSelectAll() {
     if (allSelected) setSelectedIds(new Set());
@@ -88,57 +94,66 @@ export function PipelinesTable({
     });
   }
 
-  async function handleDelete(id: string) {
+  function requestDeleteOne(id: string) {
     const row = projects.find((p) => p.id === id);
-    const label = row
-      ? `${row.no_quote} · ${row.pipeline_name}`
-      : "this pipeline";
-    if (!confirmDelete(`Delete pipeline “${label}”?\n\nThis cannot be undone.`)) {
-      return;
-    }
-    setError(null);
-    setDeletingId(id);
-    const supabase = createClient();
-    const { error: deleteError } = await supabase.from("pipelines").delete().eq("id", id);
-    setDeletingId(null);
-    if (deleteError) {
-      setError(deleteError.message);
-      return;
-    }
-    // Prior activity for this pipeline is purged by DB trigger (029).
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user && row) {
-      await logSalesActivity(supabase, {
-        actorId: user.id,
-        actionType: "pipeline_deleted",
-        entityType: "pipeline",
-        entityId: id,
-        entityLabel: `${row.no_quote} · ${row.pipeline_name}`,
-        summary: `Deleted pipeline ${row.no_quote} “${row.pipeline_name}”`,
-      });
-    }
-    router.refresh();
+    setPendingDelete({
+      type: "one",
+      id,
+      label: row ? `${row.no_quote} · ${row.pipeline_name}` : "this pipeline",
+    });
   }
 
-  async function handleBulkDelete() {
+  function requestBulkDelete() {
     if (selectedIds.size === 0) return;
-    const n = selectedIds.size;
-    if (
-      !confirmDelete(
-        `Delete ${n} selected pipeline${n === 1 ? "" : "s"}?\n\nThis cannot be undone.`
-      )
-    ) {
+    setPendingDelete({
+      type: "bulk",
+      ids: Array.from(selectedIds),
+      count: selectedIds.size,
+    });
+  }
+
+  async function executePendingDelete() {
+    if (!pendingDelete) return;
+    setError(null);
+
+    if (pendingDelete.type === "one") {
+      const row = projects.find((p) => p.id === pendingDelete.id);
+      setDeletingId(pendingDelete.id);
+      const supabase = createClient();
+      const { error: deleteError } = await supabase
+        .from("pipelines")
+        .delete()
+        .eq("id", pendingDelete.id);
+      setDeletingId(null);
+      setPendingDelete(null);
+      if (deleteError) {
+        setError(deleteError.message);
+        return;
+      }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user && row) {
+        await logSalesActivity(supabase, {
+          actorId: user.id,
+          actionType: "pipeline_deleted",
+          entityType: "pipeline",
+          entityId: pendingDelete.id,
+          entityLabel: `${row.no_quote} · ${row.pipeline_name}`,
+          summary: `Deleted pipeline ${row.no_quote} “${row.pipeline_name}”`,
+        });
+      }
+      router.refresh();
       return;
     }
-    setError(null);
+
     setBulkDeleting(true);
-    const ids = Array.from(selectedIds);
-    const rows = projects.filter((p) => selectedIds.has(p.id));
+    const ids = pendingDelete.ids;
+    const rows = projects.filter((p) => ids.includes(p.id));
     const supabase = createClient();
     const { error: deleteError } = await supabase.from("pipelines").delete().in("id", ids);
     setBulkDeleting(false);
+    setPendingDelete(null);
     if (deleteError) {
       setError(deleteError.message);
       return;
@@ -230,7 +245,7 @@ export function PipelinesTable({
           />
           <button
             type="button"
-            onClick={handleBulkDelete}
+            onClick={requestBulkDelete}
             disabled={bulkDeleting || bulkOutcomeSaving}
             className="btn-secondary gap-2 text-red-700 hover:border-red-200 hover:bg-red-50"
           >
@@ -250,6 +265,25 @@ export function PipelinesTable({
 
   return (
     <div>
+      <ConfirmDeleteDialog
+        open={pendingDelete != null}
+        title={
+          pendingDelete?.type === "bulk"
+            ? `Delete ${pendingDelete.count} pipeline${pendingDelete.count === 1 ? "" : "s"}?`
+            : pendingDelete
+              ? `Delete pipeline “${pendingDelete.label}”?`
+              : ""
+        }
+        message="This cannot be undone."
+        confirmLabel="Yes, delete"
+        busy={deleteBusy}
+        onCancel={() => {
+          if (!deleteBusy) setPendingDelete(null);
+        }}
+        onConfirm={() => {
+          void executePendingDelete();
+        }}
+      />
       {toolbar}
 
       {/* Mobile cards */}
@@ -331,7 +365,7 @@ export function PipelinesTable({
                   </Link>
                   <button
                     type="button"
-                    onClick={() => handleDelete(p.id)}
+                    onClick={() => requestDeleteOne(p.id)}
                     disabled={deletingId === p.id}
                     className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                     title="Delete"
@@ -467,7 +501,7 @@ export function PipelinesTable({
                     </Link>
                     <button
                       type="button"
-                      onClick={() => handleDelete(p.id)}
+                      onClick={() => requestDeleteOne(p.id)}
                       disabled={deletingId === p.id}
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                       title="Delete"

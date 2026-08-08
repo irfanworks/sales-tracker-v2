@@ -9,7 +9,7 @@ import {
   updateManagedUser,
 } from "@/app/dashboard/settings/userActions";
 import { formatNumberAsThousands, formatThousandsInput, parseThousandsInput } from "@/lib/formatThousands";
-import { confirmDelete } from "@/lib/confirmDelete";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 export type ManagedUser = {
   id: string;
@@ -46,6 +46,7 @@ export function AdminUsersManager({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<ManagedUser | null>(null);
 
   const sorted = useMemo(
     () =>
@@ -173,26 +174,44 @@ export function AdminUsersManager({
   }
 
   function handleDeleteUser(user: ManagedUser) {
-    const ok = confirmDelete(
-      `Delete ${user.display_name} (${user.email})?\n\n` +
-        "This permanently removes the account and all pipelines / prospects owned by this user. This cannot be undone."
-    );
-    if (!ok) return;
+    setDeleteTarget(user);
+  }
+
+  function executeDeleteUser() {
+    if (!deleteTarget) return;
+    const user = deleteTarget;
     setError(null);
     setSuccess(null);
     startTransition(async () => {
       const result = await deleteManagedUser(user.id);
       if (!result.ok) {
         setError(result.error);
+        setDeleteTarget(null);
         return;
       }
       setSuccess(`${user.display_name} deleted.`);
+      setDeleteTarget(null);
       setMode({ type: "idle" });
     });
   }
 
   return (
     <div className="space-y-4">
+      <ConfirmDeleteDialog
+        open={deleteTarget != null}
+        title={
+          deleteTarget
+            ? `Delete ${deleteTarget.display_name} (${deleteTarget.email})?`
+            : ""
+        }
+        message="This permanently removes the account and all pipelines / prospects owned by this user.\nThis cannot be undone."
+        confirmLabel="Yes, delete"
+        busy={pending}
+        onCancel={() => {
+          if (!pending) setDeleteTarget(null);
+        }}
+        onConfirm={executeDeleteUser}
+      />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <p className="text-sm text-slate-600">
           Create, edit, or delete sales and admin accounts. You can also set a new password for any
