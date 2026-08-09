@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { Activity, ArrowRight, ArrowUpRight } from "lucide-react";
 import {
   SALES_ACTIVITY_ACTION_LABELS,
@@ -7,6 +7,7 @@ import {
   type SalesActivityActionType,
 } from "@/lib/salesActivity";
 import type { SalesActivityRow } from "@/components/SalesActivityFeed";
+import { formatJakartaDateTime, formatJakartaTime } from "@/lib/timezone";
 
 const TONE: Record<string, string> = {
   pipeline_created: "bg-emerald-50 text-emerald-800 ring-emerald-200",
@@ -50,7 +51,7 @@ export function DashboardLatestActivity({
             <h2 className="text-xs font-bold uppercase tracking-[0.12em] sm:text-sm">
               Latest Activity
             </h2>
-            <p className="text-[11px] text-slate-300">Real create / edit actions only</p>
+            <p className="text-[11px] text-slate-300">Real create / edit actions only · GMT+7</p>
           </div>
         </div>
         <Link
@@ -84,8 +85,9 @@ export function DashboardLatestActivity({
                   <time
                     className="text-xs font-bold tabular-nums text-slate-500"
                     dateTime={row.created_at}
+                    title={`${formatJakartaDateTime(row.created_at)} GMT+7`}
                   >
-                    {format(new Date(row.created_at), "HH:mm")}
+                    {formatJakartaTime(row.created_at)}
                   </time>
                   <span className="text-sm font-bold text-slate-900">
                     {row.actor_name ?? "Unknown"}
