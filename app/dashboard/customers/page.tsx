@@ -1,6 +1,6 @@
 import { getSupabase } from "@/lib/auth";
 import { CustomersTable } from "@/components/CustomersTable";
-import { AddCustomerForm } from "@/components/AddCustomerForm";
+import { AddCustomerPanel } from "@/components/AddCustomerPanel";
 import { ExportCustomersButton } from "@/components/ExportCustomersButton";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Users } from "lucide-react";
@@ -52,27 +52,24 @@ export default async function CustomersPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <PageHeader
         icon={Users}
         title="Customers"
         description="Master data customer. Sector optional. At least one PIC (name) is required."
         actions={<ExportCustomersButton customers={normalized} />}
       />
-      <div className="card-elevated p-5 sm:p-6">
-        <h2 className="mb-4 text-base font-bold text-slate-900 sm:text-lg">Add customer</h2>
-        <AddCustomerForm
-          existingCustomers={normalized.map((c) => ({
-            id: c.id,
-            name: c.name,
-            slug: c.slug,
-            sector: c.sector,
-          }))}
-        />
-      </div>
       <div className="table-shell">
         <CustomersTable customers={normalized} />
       </div>
+      <AddCustomerPanel
+        existingCustomers={normalized.map((c) => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          sector: c.sector,
+        }))}
+      />
     </div>
   );
 }

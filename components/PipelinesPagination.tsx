@@ -7,12 +7,14 @@ export function PipelinesPagination({
   pageSize,
   basePath,
   searchParams,
+  itemLabel = "pipelines",
 }: {
   page: number;
   totalCount: number;
   pageSize: number;
   basePath: string;
   searchParams: Record<string, string | undefined>;
+  itemLabel?: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   if (totalCount <= pageSize) return null;
@@ -33,7 +35,7 @@ export function PipelinesPagination({
   return (
     <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-slate-600">
-        Showing {from}–{to} of {totalCount} pipelines
+        Showing {from}–{to} of {totalCount} {itemLabel}
       </p>
       <div className="flex items-center gap-2">
         {page > 1 ? (

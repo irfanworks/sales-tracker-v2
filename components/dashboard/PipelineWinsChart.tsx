@@ -57,7 +57,7 @@ export function PipelineWinsChart({
       }).format(n));
 
   const { maxWins, winTicks } = useMemo(() => {
-    const raw = Math.max(...series.map((d) => d.wins), 1);
+    const raw = Math.max(...(series?.map((d) => d.wins) ?? []), 1);
     const mw = niceMax(raw);
     return { maxWins: mw, winTicks: ticks(mw, 4) };
   }, [series]);
@@ -69,7 +69,8 @@ export function PipelineWinsChart({
   const innerW = CHART_W - padL - padR;
   const innerH = CHART_H - padT - padB;
   const barGap = 0.35;
-  const slot = innerW / series.length;
+  const monthCount = Math.max(series?.length ?? 0, 1);
+  const slot = innerW / monthCount;
   const barW = slot * (1 - barGap);
 
   function xCenter(i: number) {

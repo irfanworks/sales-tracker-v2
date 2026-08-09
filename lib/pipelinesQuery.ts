@@ -47,7 +47,10 @@ export function parsePipelineListParams(params: PipelineListParams) {
 export function buildPipelinesListQuery(
   supabase: SupabaseClient,
   params: PipelineListParams,
-  options?: { count?: "exact"; range?: { from: number; to: number } }
+  options?: {
+    count?: "exact" | "estimated" | "planned";
+    range?: { from: number; to: number };
+  }
 ) {
   const { sortBy, isAscending } = parsePipelineListParams(params);
 
@@ -70,20 +73,6 @@ export function buildPipelinesListQuery(
   if (options?.range) {
     query = query.range(options.range.from, options.range.to);
   }
-
-  return query;
-}
-
-export function buildPipelinesMetricsQuery(
-  supabase: SupabaseClient,
-  params: PipelineListParams
-) {
-  let query = supabase.from("pipelines").select("value, progress_type, prospect, outcome_status, status");
-
-  if (params.progress_type) query = query.eq("progress_type", params.progress_type);
-  if (params.prospect) query = query.eq("prospect", params.prospect);
-  if (params.outcome_status) query = query.eq("outcome_status", params.outcome_status);
-  if (params.sales_id) query = query.eq("sales_id", params.sales_id);
 
   return query;
 }

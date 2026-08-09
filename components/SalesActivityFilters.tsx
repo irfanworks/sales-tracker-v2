@@ -1,9 +1,9 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarRange, Filter, UserRound, X } from "lucide-react";
+import { CalendarRange, ChevronDown, Filter, UserRound, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
 import {
   daysAgoJakarta,
   jakartaTodayKey,
@@ -60,6 +60,7 @@ export function SalesActivityFilters({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [expanded, setExpanded] = useState(false);
 
   function pushParams(mutate: (next: URLSearchParams) => void) {
     const next = new URLSearchParams(searchParams.toString());
@@ -124,7 +125,12 @@ export function SalesActivityFilters({
   return (
     <section className="filter-panel" aria-label="Sales activity filters">
       <div className="filter-panel__header">
-        <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left md:pointer-events-none"
+          aria-expanded={expanded}
+        >
           <span className="filter-panel__icon">
             <Filter className="h-4 w-4" />
           </span>
@@ -141,7 +147,12 @@ export function SalesActivityFilters({
                 : "Pick a range in GMT+7 (WIB)"}
             </p>
           </div>
-        </div>
+          <ChevronDown
+            className={`ml-auto h-5 w-5 shrink-0 text-slate-400 transition-transform md:hidden ${
+              expanded ? "rotate-180" : ""
+            }`}
+          />
+        </button>
         {hasFilters && (
           <button
             type="button"
@@ -181,7 +192,7 @@ export function SalesActivityFilters({
         </div>
       )}
 
-      <div className="filter-panel__body">
+      <div className={`filter-panel__body ${expanded ? "" : "hidden md:block"}`}>
         <div>
           <p className="filter-section-label">Quick range · GMT+7</p>
           <div className="filter-presets">

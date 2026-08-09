@@ -3,9 +3,12 @@ import Link from "next/link";
 import { getAuthUser, getProfile, getSalesOptions, getSupabase } from "@/lib/auth";
 import { ProspectsTable } from "@/components/ProspectsTable";
 import { ProspectsFilters } from "@/components/ProspectsFilters";
+import { PipelinesPagination } from "@/components/PipelinesPagination";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PlusCircle, Target } from "lucide-react";
 import type { ProspectStatus } from "@/lib/types/database";
+
+const PROSPECTS_PAGE_SIZE = 50;
 
 export default async function ProspectsListPage({
   searchParams,
@@ -19,6 +22,9 @@ export default async function ProspectsListPage({
 
   const status = rawParams.status;
   const salesId = !isAdmin && user ? user.id : rawParams.sales_id;
+  const page = Math.max(1, Number.parseInt(rawParams.page ?? "1", 10) || 1);
+  const from = (page - 1) * PROSPECTS_PAGE_SIZE;
+  const to = from + PROSPECTS_PAGE_SIZE - 1;
 
   const supabase = await getSupabase();
   let query = supabase
@@ -35,15 +41,17 @@ export default async function ProspectsListPage({
       latest_update,
       sales_id,
       customers ( id, name, slug )
-    `
+    `,
+      { count: "estimated" }
     )
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false })
+    .range(from, to);
 
   if (status) query = query.eq("status", status);
   if (salesId) query = query.eq("sales_id", salesId);
 
   const [salesOptions, listResult] = await Promise.all([getSalesOptions(), query]);
-  const { data: rows, error } = listResult;
+  const { data: rows, error, count } = listResult;
 
   if (error) {
     return (
@@ -86,6 +94,8 @@ export default async function ProspectsListPage({
     sales_name: salesNames[p.sales_id] ?? null,
   }));
 
+  const totalCount = count ?? prospects.length;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -116,6 +126,17 @@ export default async function ProspectsListPage({
           prospects={prospectsWithSales}
           showSales={isAdmin}
           emptyMessage="No prospects yet."
+        />
+        <PipelinesPagination
+          page={page}
+          totalCount={totalCount}
+          pageSize={PROSPECTS_PAGE_SIZE}
+          basePath="/dashboard/prospects"
+          searchParams={{
+            status: rawParams.status,
+            sales_id: isAdmin ? rawParams.sales_id : undefined,
+          }}
+          itemLabel="prospects"
         />
       </div>
     </div>

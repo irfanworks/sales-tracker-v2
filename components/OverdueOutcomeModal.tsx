@@ -62,7 +62,7 @@ export function OverdueOutcomeModal({
         role="dialog"
         aria-modal
         aria-labelledby="overdue-outcome-title"
-        className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-elevated animate-slide-up sm:mx-4 sm:rounded-3xl"
+        className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-elevated animate-slide-up safe-pb sm:mx-4 sm:rounded-3xl"
       >
         {/* Hero */}
         <div className="relative overflow-hidden bg-gradient-to-br from-[#0b1220] via-[#12263f] to-[#0e7490] px-5 pb-5 pt-5 text-white sm:px-6 sm:pt-6">
@@ -184,7 +184,7 @@ export function OverdueOutcomeModal({
           <Link
             href="/dashboard/pipeline?sort_by=target_closing&sort_order=asc"
             onClick={() => setOpen(false)}
-            className="btn-primary order-1 inline-flex items-center justify-center gap-2 sm:order-2"
+            className="btn-primary order-1 inline-flex w-full items-center justify-center gap-2 sm:order-2 sm:w-auto"
           >
             Update on Pipeline
             <ArrowRight className="h-4 w-4" />

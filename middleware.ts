@@ -6,8 +6,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Refresh auth on navigations + API — skip Next internals and static assets
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
-  ],
+  // Only auth-sensitive routes — skip marketing static cost and random paths
+  matcher: ["/", "/login", "/dashboard/:path*", "/api/:path*"],
 };

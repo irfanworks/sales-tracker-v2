@@ -4,6 +4,10 @@ import { getSupabase } from "@/lib/auth";
 const DEFAULT_USD_PER_IDR = 0.000065;
 const DEFAULT_SGD_PER_IDR = 0.000086;
 
+/**
+ * Request-deduped currency rates.
+ * (Not using unstable_cache — Supabase client requires cookies and can't run in that cache scope.)
+ */
 export const getCurrencyRates = cache(async () => {
   const supabase = await getSupabase();
   const { data } = await supabase

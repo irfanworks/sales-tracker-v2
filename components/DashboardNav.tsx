@@ -12,8 +12,7 @@ import {
   Activity,
   type LucideIcon,
 } from "lucide-react";
-
-type NavItem = { href: string; label: string; icon: LucideIcon };
+import { isNavActive, type NavItem } from "@/lib/nav";
 
 const navGroups: { title: string; items: NavItem[] }[] = [
   {
@@ -39,58 +38,29 @@ const navGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
-function isNavActive(pathname: string, href: string): boolean {
-  if (pathname === href) return true;
-  if (href === "/dashboard") return false;
-  if (href === "/dashboard/pipeline") {
-    return (
-      pathname === href ||
-      (pathname.startsWith(`${href}/`) && !pathname.startsWith(`${href}/new`))
-    );
-  }
-  if (href === "/dashboard/prospects") {
-    return (
-      pathname === href ||
-      (pathname.startsWith(`${href}/`) && !pathname.startsWith(`${href}/new`))
-    );
-  }
-  return pathname.startsWith(href);
-}
-
 function NavLink({
   href,
   label,
   icon: Icon,
   isActive,
   onNavigate,
-  variant = "sidebar",
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   isActive: boolean;
   onNavigate?: () => void;
-  variant?: "sidebar" | "drawer";
 }) {
-  const baseClass =
-    variant === "sidebar"
-      ? `nav-link ${isActive ? "nav-link-active" : "nav-link-inactive"}`
-      : `relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors duration-150 ${
-          isActive
-            ? "bg-cyan-50 text-cyan-900"
-            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-        }`;
-
   return (
-    <Link href={href} onClick={onNavigate} className={baseClass} aria-current={isActive ? "page" : undefined}>
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={`nav-link ${isActive ? "nav-link-active" : "nav-link-inactive"}`}
+      aria-current={isActive ? "page" : undefined}
+    >
       <Icon
-        className={`h-4 w-4 shrink-0 ${
-          isActive
-            ? variant === "sidebar"
-              ? "text-cyan-400"
-              : "text-cyan-700"
-            : "opacity-80"
-        }`}
+        className={`h-4 w-4 shrink-0 ${isActive ? "text-cyan-400" : "opacity-80"}`}
+        style={{ width: "var(--icon-sm)", height: "var(--icon-sm)" }}
       />
       <span className="truncate">{label}</span>
     </Link>
@@ -100,25 +70,21 @@ function NavLink({
 export function DashboardNav({
   role,
   onNavigate,
-  variant = "sidebar",
 }: {
   role: string;
   onNavigate?: () => void;
+  /** @deprecated drawer removed — more sheet owns mobile secondary nav */
   variant?: "sidebar" | "drawer";
 }) {
   void role;
   const pathname = usePathname();
 
   return (
-    <nav className={variant === "sidebar" ? "flex h-full flex-col px-2.5 py-4" : "p-2"}>
+    <nav className="flex h-full flex-col px-2.5 py-4">
       <div className="flex-1 space-y-5">
         {navGroups.map((group) => (
           <div key={group.title} className="space-y-0.5">
-            <p
-              className={`mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-                variant === "sidebar" ? "text-slate-500" : "text-slate-400"
-              }`}
-            >
+            <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               {group.title}
             </p>
             <ul className="space-y-0.5">
@@ -130,7 +96,6 @@ export function DashboardNav({
                     icon={icon}
                     isActive={isNavActive(pathname, href)}
                     onNavigate={onNavigate}
-                    variant={variant}
                   />
                 </li>
               ))}
@@ -139,12 +104,10 @@ export function DashboardNav({
         ))}
       </div>
 
-      {variant === "sidebar" && (
-        <div className="mt-auto border-t border-white/[0.06] px-2.5 pt-4">
-          <p className="text-[10px] font-medium tracking-wide text-slate-500">Enercon Indonesia</p>
-          <p className="mt-0.5 text-[11px] text-slate-400">Sales monitoring</p>
-        </div>
-      )}
+      <div className="mt-auto border-t border-white/[0.06] px-2.5 pt-4">
+        <p className="text-[10px] font-medium tracking-wide text-slate-500">Enercon Indonesia</p>
+        <p className="mt-0.5 text-[11px] text-slate-400">Sales monitoring</p>
+      </div>
     </nav>
   );
 }

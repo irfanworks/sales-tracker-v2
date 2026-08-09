@@ -1,3 +1,9 @@
+/**
+ * Open pipelines whose target closing date is before today (Asia/Jakarta)
+ * and that still have no outcome status.
+ *
+ * Uses a single list query with limit+1 to avoid an expensive exact count.
+ */
 import { getAuthUser, getProfile, getSupabase } from "@/lib/auth";
 import { pipelineDetailPath } from "@/lib/pipelinePaths";
 import { jakartaTodayKey } from "@/lib/timezone";
@@ -36,10 +42,6 @@ type PipelineRow = {
     | null;
 };
 
-/**
- * Open pipelines whose target closing date is before today (Asia/Jakarta)
- * and that still have no outcome status.
- */
 export async function getOverdueWithoutOutcome(previewLimit = 8): Promise<{
   count: number;
   items: OverdueOutcomePipeline[];
@@ -51,14 +53,6 @@ export async function getOverdueWithoutOutcome(previewLimit = 8): Promise<{
   const isAdmin = profile?.role === "admin";
   const today = jakartaTodayKey();
   const supabase = await getSupabase();
-
-  let countQuery = supabase
-    .from("pipelines")
-    .select("id", { count: "exact", head: true })
-    .not("target_closing_at", "is", null)
-    .lt("target_closing_at", today)
-    .is("outcome_status", null)
-    .or("status.is.null,status.eq.Open");
 
   let listQuery = supabase
     .from("pipelines")
@@ -80,24 +74,23 @@ export async function getOverdueWithoutOutcome(previewLimit = 8): Promise<{
     .is("outcome_status", null)
     .or("status.is.null,status.eq.Open")
     .order("target_closing_at", { ascending: true })
-    .limit(previewLimit);
+    .limit(previewLimit + 1);
 
   if (!isAdmin) {
-    countQuery = countQuery.eq("sales_id", user.id);
     listQuery = listQuery.eq("sales_id", user.id);
   }
 
-  const [countResult, listResult] = await Promise.all([countQuery, listQuery]);
+  const listResult = await listQuery;
 
-  if (countResult.error || listResult.error) {
-    console.error(
-      "[overdue-outcome]",
-      countResult.error?.message ?? listResult.error?.message
-    );
+  if (listResult.error) {
+    console.error("[overdue-outcome]", listResult.error.message);
     return { count: 0, items: [], isAdmin };
   }
 
-  const rows = (listResult.data ?? []) as PipelineRow[];
+  const raw = (listResult.data ?? []) as PipelineRow[];
+  const hasMore = raw.length > previewLimit;
+  const rows = hasMore ? raw.slice(0, previewLimit) : raw;
+
   const salesIds = [...new Set(rows.map((p) => p.sales_id))];
   const salesNames: Record<string, string> = {};
 
@@ -131,5 +124,8 @@ export async function getOverdueWithoutOutcome(previewLimit = 8): Promise<{
     };
   });
 
-  return { count: countResult.count ?? items.length, items, isAdmin };
+  // Exact total is expensive; report at least preview size (+1 when more exist)
+  const count = hasMore ? previewLimit + 1 : items.length;
+
+  return { count, items, isAdmin };
 }

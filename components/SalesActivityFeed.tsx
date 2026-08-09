@@ -191,7 +191,7 @@ export function SalesActivityFeed({ activities }: { activities: SalesActivityRow
       <div className="space-y-8">
         {groups.map((group) => (
           <section key={group.heading}>
-            <div className="sticky top-0 z-[1] -mx-1 mb-3 flex items-center justify-between gap-3 bg-[var(--background,#f8fafc)]/95 px-1 py-2 backdrop-blur-sm">
+            <div className="sticky top-[calc(var(--header-height)+env(safe-area-inset-top,0px))] z-[1] -mx-1 mb-3 flex items-center justify-between gap-3 bg-[var(--background,#f8fafc)]/95 px-1 py-2 backdrop-blur-sm">
               <h2 className="text-sm font-bold tracking-tight text-slate-900">{group.heading}</h2>
               <span className="rounded-full bg-slate-200/80 px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-slate-600">
                 {group.items.length} {group.items.length === 1 ? "action" : "actions"}
@@ -211,13 +211,8 @@ export function SalesActivityFeed({ activities }: { activities: SalesActivityRow
                       ? "Prospect"
                       : null;
 
-                return (
-                  <li
-                    key={row.id}
-                    className={`grid gap-3 px-4 py-3.5 sm:grid-cols-[4.5rem_1fr_auto] sm:items-start sm:gap-4 sm:px-5 ${
-                      idx > 0 ? "border-t border-slate-100" : ""
-                    }`}
-                  >
+                const body = (
+                  <>
                     <time
                       className="pt-0.5 text-sm font-bold tabular-nums text-slate-500"
                       dateTime={row.created_at}
@@ -228,19 +223,19 @@ export function SalesActivityFeed({ activities }: { activities: SalesActivityRow
 
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900">
+                        <span className="text-[15px] font-bold text-slate-900">
                           {row.actor_name ?? "Unknown sales"}
                         </span>
                         <span
                           className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ring-1 ${meta.tone}`}
                         >
-                          <Icon className="h-3 w-3" />
+                          <Icon className="h-3.5 w-3.5" />
                           {meta.verb}
                           {entityKind ? ` · ${entityKind}` : ""}
                         </span>
                       </div>
 
-                      <p className="mt-1.5 text-sm leading-snug text-slate-800">{row.summary}</p>
+                      <p className="mt-1.5 text-[15px] leading-snug text-slate-800">{row.summary}</p>
 
                       {chips.length > 0 && (
                         <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -256,19 +251,42 @@ export function SalesActivityFeed({ activities }: { activities: SalesActivityRow
                       )}
 
                       {href && (
-                        <Link
-                          href={href}
-                          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-cyan-700 hover:text-cyan-800"
-                        >
+                        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-cyan-700">
                           Open record
                           <ArrowUpRight className="h-3.5 w-3.5" />
-                        </Link>
+                        </span>
                       )}
+
+                      <p className="mt-1.5 text-[11px] tabular-nums text-slate-400 sm:hidden">
+                        {formatDistanceToNow(new Date(row.created_at), { addSuffix: true })}
+                      </p>
                     </div>
 
                     <p className="hidden text-right text-[11px] tabular-nums text-slate-400 sm:block">
                       {formatDistanceToNow(new Date(row.created_at), { addSuffix: true })}
                     </p>
+                  </>
+                );
+
+                return (
+                  <li
+                    key={row.id}
+                    className={`${
+                      idx > 0 ? "border-t border-slate-100" : ""
+                    }`}
+                  >
+                    {href ? (
+                      <Link
+                        href={href}
+                        className="grid gap-3 px-4 py-3.5 transition hover:bg-slate-50/80 active:bg-slate-50 sm:grid-cols-[4.5rem_1fr_auto] sm:items-start sm:gap-4 sm:px-5"
+                      >
+                        {body}
+                      </Link>
+                    ) : (
+                      <div className="grid gap-3 px-4 py-3.5 sm:grid-cols-[4.5rem_1fr_auto] sm:items-start sm:gap-4 sm:px-5">
+                        {body}
+                      </div>
+                    )}
                   </li>
                 );
               })}

@@ -58,7 +58,7 @@ export function QuoteSubmittedChart({
   const [hovered, setHovered] = useState<string | null>(null);
 
   const data =
-    range === 7 ? series7d : range === 14 ? series14d : series30d;
+    range === 7 ? series7d ?? [] : range === 14 ? series14d ?? [] : series30d ?? [];
 
   const { maxCount, countTicks } = useMemo(() => {
     const raw = Math.max(...data.map((d) => d.count), 1);

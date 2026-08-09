@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import {
   getAuthUser,
   getProfile,
-  getSalesOptions,
   getSupabase,
   getTeamTargetProfiles,
   sumCompanyAnnualTarget,
@@ -15,15 +14,11 @@ import { LazyDashboardWorkCharts } from "@/components/dashboard/LazyDashboardWor
 import { DashboardUserPicker } from "@/components/dashboard/DashboardUserPicker";
 import { DashboardLatestActivity } from "@/components/dashboard/DashboardLatestActivity";
 import {
-  buildDailyQuoteSeries,
-  buildWorkByCategory,
-  buildWorkBySector,
-  buildYearlyMonthlyWinsSeries,
-  calcDashboardKpis,
-  getHotAttentionProjects,
-  getOverdueProjects,
-  type DashboardPipelineRow,
-} from "@/lib/dashboard";
+  fetchDashboardAttentionLists,
+  fetchDashboardChartSeries,
+  fetchDashboardKpis,
+  fetchDashboardWorkBreakdown,
+} from "@/lib/dashboardData";
 import { LayoutDashboard } from "lucide-react";
 
 export default async function DashboardPage({
@@ -40,9 +35,11 @@ export default async function DashboardPage({
   ]);
 
   const isAdmin = profile?.role === "admin";
-  const [salesOptions, teamTargets] = isAdmin
-    ? await Promise.all([getSalesOptions(), getTeamTargetProfiles()])
-    : [[], []];
+  const teamTargets = isAdmin ? await getTeamTargetProfiles() : [];
+  const salesOptions = teamTargets.map((t) => ({
+    id: t.id,
+    display_name: t.display_name,
+  }));
 
   const monitorSalesId =
     isAdmin && params.sales_id && salesOptions.some((s) => s.id === params.sales_id)
@@ -52,34 +49,7 @@ export default async function DashboardPage({
     ? salesOptions.find((s) => s.id === monitorSalesId)
     : undefined;
 
-  let query = supabase
-    .from("pipelines")
-    .select(
-      `
-      id,
-      slug,
-      created_at,
-      no_quote,
-      pipeline_name,
-      customer_id,
-      value,
-      pipeline_type,
-      progress_type,
-      outcome_status,
-      prospect,
-      status,
-      target_closing_at,
-      sales_id,
-      customers ( id, name, slug, sector )
-    `
-    )
-    .order("created_at", { ascending: false });
-
-  if (!isAdmin && user) {
-    query = query.eq("sales_id", user.id);
-  } else if (isAdmin && monitorSalesId) {
-    query = query.eq("sales_id", monitorSalesId);
-  }
+  const scopeSalesId = !isAdmin && user ? user.id : monitorSalesId;
 
   let activityQuery = supabase
     .from("sales_activity_log")
@@ -89,44 +59,41 @@ export default async function DashboardPage({
     .order("created_at", { ascending: false })
     .limit(10);
 
-  if (!isAdmin && user) {
-    activityQuery = activityQuery.eq("actor_id", user.id);
-  } else if (isAdmin && monitorSalesId) {
-    activityQuery = activityQuery.eq("actor_id", monitorSalesId);
+  if (scopeSalesId) {
+    activityQuery = activityQuery.eq("actor_id", scopeSalesId);
   }
 
-  // Open prospects currently being worked on (Prospects module — not Hot Prospect pipelines)
   let prospectsCountQuery = supabase
     .from("prospects")
     .select("id", { count: "exact", head: true })
     .eq("status", "Open");
 
-  if (!isAdmin && user) {
-    prospectsCountQuery = prospectsCountQuery.eq("sales_id", user.id);
-  } else if (isAdmin && monitorSalesId) {
-    prospectsCountQuery = prospectsCountQuery.eq("sales_id", monitorSalesId);
+  if (scopeSalesId) {
+    prospectsCountQuery = prospectsCountQuery.eq("sales_id", scopeSalesId);
   }
 
-  const [{ data: projectsRaw, error }, activityResult, prospectsCountResult] = await Promise.all([
-    query,
+  const winsYear = new Date().getFullYear();
+
+  const [
+    kpisRpc,
+    charts,
+    attention,
+    work,
+    activityResult,
+    prospectsCountResult,
+  ] = await Promise.all([
+    fetchDashboardKpis(supabase, scopeSalesId),
+    fetchDashboardChartSeries(supabase, scopeSalesId, winsYear),
+    fetchDashboardAttentionLists(supabase, scopeSalesId),
+    fetchDashboardWorkBreakdown(supabase, scopeSalesId),
     activityQuery,
     prospectsCountQuery,
   ]);
-
-  if (error) {
-    return (
-      <div className="card p-6">
-        <p className="text-red-600">Error loading dashboard: {error.message}</p>
-      </div>
-    );
-  }
 
   const activityRows = activityResult.error ? [] : activityResult.data ?? [];
   const totalProspectsCount = prospectsCountResult.error
     ? 0
     : prospectsCountResult.count ?? 0;
-
-  const pipelines = (projectsRaw ?? []) as DashboardPipelineRow[];
 
   let annualTarget: number | null = null;
   if (isAdmin && monitorSalesId) {
@@ -139,18 +106,12 @@ export default async function DashboardPage({
       profile?.annual_sales_target != null ? Number(profile.annual_sales_target) : null;
   }
 
-  const kpis = calcDashboardKpis(pipelines, annualTarget);
-  const winsYear = new Date().getFullYear();
-  const quoteSeries7d = buildDailyQuoteSeries(pipelines, 7);
-  const quoteSeries14d = buildDailyQuoteSeries(pipelines, 14);
-  const quoteSeries30d = buildDailyQuoteSeries(pipelines, 30);
-  const winsSeries = buildYearlyMonthlyWinsSeries(pipelines, winsYear);
-  const overdue = getOverdueProjects(pipelines);
-  const hotAttention = getHotAttentionProjects(pipelines);
-  const byCategory = buildWorkByCategory(pipelines);
-  const bySector = buildWorkBySector(pipelines);
+  const target =
+    annualTarget != null && annualTarget > 0 ? annualTarget : null;
+  const targetAchievementPct =
+    target != null ? (kpisRpc.closingForTarget / target) * 100 : null;
 
-  const actorIds = [...new Set((activityRows ?? []).map((a) => a.actor_id))];
+  const actorIds = [...new Set(activityRows.map((a) => a.actor_id))];
   const actorNames: Record<string, string> = {};
   if (actorIds.length > 0) {
     const { data: profiles } = await supabase
@@ -162,7 +123,7 @@ export default async function DashboardPage({
     });
   }
 
-  const latestActivity = (activityRows ?? []).map((a) => ({
+  const latestActivity = activityRows.map((a) => ({
     ...a,
     actor_name: actorNames[a.actor_id] ?? null,
   }));
@@ -193,20 +154,20 @@ export default async function DashboardPage({
       />
 
       <DashboardHeroLayout
-        totalPipelineValue={kpis.totalPipelineValue}
-        hotProspectValue={kpis.hotProspectValue}
-        totalWon={kpis.totalWon}
-        closingForTarget={kpis.closingForTarget}
-        annualSalesTarget={kpis.annualSalesTarget}
-        targetAchievementPct={kpis.targetAchievementPct}
-        totalProposals={kpis.totalProposals}
-        totalProjectWinCount={kpis.totalProjectWinCount}
+        totalPipelineValue={kpisRpc.totalPipelineValue}
+        hotProspectValue={kpisRpc.hotProspectValue}
+        totalWon={kpisRpc.totalWon}
+        closingForTarget={kpisRpc.closingForTarget}
+        annualSalesTarget={target}
+        targetAchievementPct={targetAchievementPct}
+        totalProposals={kpisRpc.totalProposals}
+        totalProjectWinCount={kpisRpc.totalProjectWinCount}
         totalProspectsCount={totalProspectsCount}
-        tenderOnProgress={kpis.tenderOnProgress}
-        quoteSeries7d={quoteSeries7d}
-        quoteSeries14d={quoteSeries14d}
-        quoteSeries30d={quoteSeries30d}
-        winsSeries={winsSeries}
+        tenderOnProgress={kpisRpc.tenderOnProgress}
+        quoteSeries7d={charts.quoteSeries7d}
+        quoteSeries14d={charts.quoteSeries14d}
+        quoteSeries30d={charts.quoteSeries30d}
+        winsSeries={charts.winsSeries}
         winsYear={winsYear}
         usdPerIdr={currencyRates.usdPerIdr}
         sgdPerIdr={currencyRates.sgdPerIdr}
@@ -218,8 +179,11 @@ export default async function DashboardPage({
               : undefined
         }
       >
-        <DashboardAttentionTables overdue={overdue} hotAttention={hotAttention} />
-        <LazyDashboardWorkCharts byCategory={byCategory} bySector={bySector} />
+        <DashboardAttentionTables
+          overdue={attention.overdue}
+          hotAttention={attention.hotAttention}
+        />
+        <LazyDashboardWorkCharts byCategory={work.byCategory} bySector={work.bySector} />
         <DashboardLatestActivity activities={latestActivity} />
       </DashboardHeroLayout>
     </div>

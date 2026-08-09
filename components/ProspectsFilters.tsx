@@ -1,10 +1,10 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PROSPECT_STATUSES } from "@/lib/types/database";
-import { CircleDot, Filter, UserRound, X } from "lucide-react";
+import { ChevronDown, CircleDot, Filter, UserRound, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
 
 interface SalesOption {
   id: string;
@@ -44,6 +44,7 @@ export function ProspectsFilters({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [expanded, setExpanded] = useState(false);
 
   function updateParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams.toString());
@@ -73,7 +74,12 @@ export function ProspectsFilters({
   return (
     <section className="filter-panel" aria-label="Prospect filters">
       <div className="filter-panel__header">
-        <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left md:pointer-events-none"
+          aria-expanded={expanded}
+        >
           <span className="filter-panel__icon">
             <Filter className="h-4 w-4" />
           </span>
@@ -86,7 +92,12 @@ export function ProspectsFilters({
               {hasFilters ? "Active refinements applied" : "Refine open opportunities"}
             </p>
           </div>
-        </div>
+          <ChevronDown
+            className={`ml-auto h-5 w-5 shrink-0 text-slate-400 transition-transform md:hidden ${
+              expanded ? "rotate-180" : ""
+            }`}
+          />
+        </button>
         {hasFilters && (
           <button
             type="button"
@@ -117,7 +128,7 @@ export function ProspectsFilters({
         </div>
       )}
 
-      <div className="filter-panel__body">
+      <div className={`filter-panel__body ${expanded ? "" : "hidden md:block"}`}>
         <p className="filter-section-label">Refine</p>
         <div className={`filter-tiles ${showSalesFilter ? "" : "filter-tiles--compact"}`}>
           <FilterTile label="Status" icon={CircleDot}>

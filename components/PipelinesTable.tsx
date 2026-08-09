@@ -237,7 +237,7 @@ export function PipelinesTable({
         <div className="border-b border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</div>
       )}
       {someSelected && (
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5">
+        <div className="sticky top-[calc(var(--header-height)+env(safe-area-inset-top,0px))] z-[2] flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50/95 px-4 py-2.5 backdrop-blur-sm md:static md:bg-slate-50/90 md:backdrop-blur-none">
           <span className="text-sm font-medium text-slate-600">{selectedIds.size} selected</span>
           <OutcomeBulkButtons
             disabled={bulkDeleting || bulkOutcomeSaving}
@@ -287,15 +287,16 @@ export function PipelinesTable({
       {toolbar}
 
       {/* Mobile cards */}
-      <div className="divide-y divide-slate-100 md:hidden">
+      <div className="space-y-2.5 p-3 md:hidden">
         {projects.map((p) => (
-          <div key={p.id} className="p-4 transition hover:bg-slate-50/50">
+          <div key={p.id} className="mobile-list-card">
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
                 checked={selectedIds.has(p.id)}
                 onChange={() => toggleSelect(p.id)}
-                className="mt-1 rounded border-slate-300"
+                className="checkbox-touch mt-1"
+                aria-label={`Select ${p.pipeline_name}`}
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
@@ -307,26 +308,23 @@ export function PipelinesTable({
                         no_quote: p.no_quote,
                         pipeline_name: p.pipeline_name,
                       })}
-                      className={`block truncate ${linkClass}`}
+                      className="mobile-list-title block truncate text-cyan-800"
                     >
                       {p.pipeline_name}
                     </Link>
-                    <p className="mt-0.5 font-mono text-xs text-slate-500">{p.no_quote}</p>
+                    <p className="mobile-list-meta mt-0.5 font-mono">{p.no_quote}</p>
                   </div>
-                  <p className="shrink-0 text-sm font-bold tabular-nums text-slate-800">
+                  <p className="shrink-0 text-[15px] font-bold tabular-nums text-slate-800">
                     {formatValue(p.value)}
                   </p>
                 </div>
-                <p className="mt-1 text-sm">
+                <p className="mobile-list-sub mt-1.5">
                   {p.customer ? (
-                    <Link
-                      href={customerDetailPath(p.customer)}
-                      className={linkClass}
-                    >
+                    <Link href={customerDetailPath(p.customer)} className="font-medium text-cyan-700">
                       {p.customer.name}
                     </Link>
                   ) : (
-                    <span className="text-slate-600">—</span>
+                    <span>—</span>
                   )}
                 </p>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -334,48 +332,51 @@ export function PipelinesTable({
                   <ProgressBadge value={p.progress_type} />
                   <ProspectBadge value={p.prospect} />
                 </div>
-                <div className="mt-2.5">
+                <div className="mt-3 flex flex-col gap-2.5 border-t border-slate-100 pt-2.5">
                   <OutcomeStatusSwitcher
                     pipelineId={p.id}
                     value={p.outcome_status}
                     pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
                     size="sm"
                   />
-                </div>
-                <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-500">
-                  <span>{p.sales_name ?? "—"}</span>
-                  <span>{format(new Date(p.created_at), "dd MMM yyyy")}</span>
-                  <PipelineStatusToggle
-                    projectId={p.id}
-                    status={(p.status === "Closed" ? "Closed" : "Open") as LifecycleStatus}
-                    pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
-                  />
-                </div>
-                <div className="mt-3 flex items-center gap-3">
-                  <Link
-                    href={pipelineDetailPath({
-                      id: p.id,
-                      slug: p.slug,
-                      no_quote: p.no_quote,
-                      pipeline_name: p.pipeline_name,
-                    })}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-cyan-700"
-                  >
-                    View <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => requestDeleteOne(p.id)}
-                    disabled={deletingId === p.id}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                    title="Delete"
-                  >
-                    {deletingId === p.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </button>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mobile-list-meta">
+                      <span>{p.sales_name ?? "—"}</span>
+                      <span>{format(new Date(p.created_at), "dd MMM yyyy")}</span>
+                    </div>
+                    <PipelineStatusToggle
+                      projectId={p.id}
+                      status={(p.status === "Closed" ? "Closed" : "Open") as LifecycleStatus}
+                      pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Link
+                      href={pipelineDetailPath({
+                        id: p.id,
+                        slug: p.slug,
+                        no_quote: p.no_quote,
+                        pipeline_name: p.pipeline_name,
+                      })}
+                      className="icon-btn gap-1.5 px-3 text-cyan-700"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span className="text-sm font-medium">View</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => requestDeleteOne(p.id)}
+                      disabled={deletingId === p.id}
+                      className="icon-btn text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                      title="Delete"
+                    >
+                      {deletingId === p.id ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

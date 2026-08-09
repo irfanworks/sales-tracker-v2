@@ -105,7 +105,7 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
       <EmptyState
         icon={Users}
         title="No customers yet"
-        description="Add your first customer using the form above."
+        description="Add your first customer using the form below."
       />
     );
   }
@@ -126,7 +126,7 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
         <div className="border-b border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</div>
       )}
       {someSelected && (
-        <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5">
+        <div className="sticky top-[calc(var(--header-height)+env(safe-area-inset-top,0px))] z-[2] flex items-center gap-3 border-b border-slate-200 bg-slate-50/95 px-4 py-2.5 backdrop-blur-sm md:static md:bg-slate-50/90 md:backdrop-blur-none">
           <span className="text-sm font-medium text-slate-600">{selectedIds.size} selected</span>
           <button
             type="button"
@@ -161,49 +161,50 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
       {toolbar}
 
       {/* Mobile cards */}
-      <div className="divide-y divide-slate-100 md:hidden">
+      <div className="space-y-2.5 p-3 md:hidden">
         {customers.map((c) => (
-          <div key={c.id} className="p-4 transition hover:bg-slate-50/50">
+          <div key={c.id} className="mobile-list-card">
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
                 checked={selectedIds.has(c.id)}
                 onChange={() => toggleSelect(c.id)}
-                className="mt-1 rounded border-slate-300"
+                className="checkbox-touch mt-1"
+                aria-label={`Select ${c.name}`}
               />
               <div className="min-w-0 flex-1">
-                <Link
-                  href={customerDetailPath(c)}
-                  className="font-semibold text-cyan-700 hover:underline"
-                >
+                <Link href={customerDetailPath(c)} className="mobile-list-title block text-cyan-800">
                   {c.name}
                 </Link>
-                <p className="mt-1 text-sm text-slate-600">{c.sector ?? "No sector"}</p>
+                <p className="mobile-list-sub mt-1">{c.sector ?? "No sector"}</p>
                 {c.pics && c.pics.length > 0 && (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mobile-list-meta mt-1">
                     PIC: {c.pics.map((p) => p.nama || p.email || "—").join(", ")}
                   </p>
                 )}
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mobile-list-meta mt-1">
                   {c.created_at ? format(new Date(c.created_at), "dd MMM yyyy") : "—"}
                 </p>
-                <div className="mt-3 flex gap-2">
-                  <Link
-                    href={customerDetailPath(c)}
-                    className="btn-ghost gap-1 px-2 py-1.5 text-slate-600"
-                  >
-                    <Pencil className="h-4 w-4" /> Edit
+                <div className="mt-3 flex gap-1">
+                  <Link href={customerDetailPath(c)} className="icon-btn gap-1.5 px-3 text-slate-600">
+                    <Pencil className="h-4 w-4" />
+                    <span className="text-sm font-medium">Edit</span>
                   </Link>
                   <button
                     type="button"
-                    onClick={() => requestDeleteOne(c.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      requestDeleteOne(c.id);
+                    }}
                     disabled={busy}
-                    className="btn-ghost gap-1 px-2 py-1.5 text-red-600 hover:bg-red-50"
+                    className="icon-btn text-red-600 hover:bg-red-50"
+                    aria-label={`Delete ${c.name}`}
                   >
                     {deletingId === c.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-5 w-5" />
                     )}
                   </button>
                 </div>
@@ -265,16 +266,20 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
                   <div className="flex gap-1">
                     <Link
                       href={customerDetailPath(c)}
-                      className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                      className="icon-btn text-slate-500"
                       title="Edit"
                     >
                       <Pencil className="h-4 w-4" />
                     </Link>
                     <button
                       type="button"
-                      onClick={() => requestDeleteOne(c.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        requestDeleteOne(c.id);
+                      }}
                       disabled={busy}
-                      className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                      className="icon-btn text-slate-500 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                       title="Delete"
                     >
                       {deletingId === c.id ? (

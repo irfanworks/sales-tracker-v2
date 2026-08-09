@@ -10,11 +10,6 @@ function decodeSlugParam(value: string) {
   }
 }
 
-function idPrefixFromSlug(slug: string): string | null {
-  const match = slug.match(/-([a-f0-9]{8})$/i);
-  return match ? match[1].toLowerCase() : null;
-}
-
 type PipelineRow = {
   id: string;
   slug: string | null;
@@ -22,19 +17,6 @@ type PipelineRow = {
   pipeline_name: string;
   [key: string]: unknown;
 };
-
-function matchesSlugParam(
-  project: { id: string; no_quote: string; pipeline_name: string; slug?: string | null },
-  slugParam: string
-) {
-  if (project.slug === slugParam) return true;
-  if (pipelineSlugFor(project) === slugParam) return true;
-
-  const prefix = idPrefixFromSlug(slugParam);
-  if (prefix && project.id.replace(/-/g, "").toLowerCase().startsWith(prefix)) return true;
-
-  return false;
-}
 
 function normalizeRpcRow(data: unknown): PipelineRow | null {
   if (!data) return null;
@@ -61,23 +43,17 @@ export async function getPipelineBySlugOrId(slugOrId: string) {
   if (bySlug) return { project: bySlug, error: null };
 
   if (isUuid(slugParam)) {
-    const { data: byId } = await supabase
+    const { data: byId, error } = await supabase
       .from("pipelines")
       .select("*")
       .eq("id", slugParam)
       .maybeSingle();
 
     if (byId) return { project: byId, error: null };
+    return { project: null, error };
   }
 
-  const { data: pipelines, error: listError } = await supabase.from("pipelines").select("*");
-
-  if (listError) {
-    return { project: null, error: listError };
-  }
-
-  const matched = (pipelines ?? []).find((row) => matchesSlugParam(row, slugParam));
-  return { project: matched ?? null, error: null };
+  return { project: null, error: null };
 }
 
 export async function ensurePipelineSlug(project: {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   OUTCOME_STATUSES,
@@ -9,6 +10,7 @@ import {
 import {
   ArrowDownWideNarrow,
   ArrowUpDown,
+  ChevronDown,
   Filter,
   Flame,
   ListFilter,
@@ -17,7 +19,6 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
 
 interface SalesOption {
   id: string;
@@ -71,6 +72,7 @@ export function PipelinesFilters({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [expanded, setExpanded] = useState(false);
 
   function updateFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams.toString());
@@ -110,7 +112,12 @@ export function PipelinesFilters({
   return (
     <section className="filter-panel" aria-label="Pipeline filters">
       <div className="filter-panel__header">
-        <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left md:pointer-events-none"
+          aria-expanded={expanded}
+        >
           <span className="filter-panel__icon">
             <Filter className="h-4 w-4" />
           </span>
@@ -125,7 +132,12 @@ export function PipelinesFilters({
               {hasFilters ? "Active refinements applied to this list" : "Refine pipelines with precision"}
             </p>
           </div>
-        </div>
+          <ChevronDown
+            className={`ml-auto h-5 w-5 shrink-0 text-slate-400 transition-transform md:hidden ${
+              expanded ? "rotate-180" : ""
+            }`}
+          />
+        </button>
         {hasFilters && (
           <button
             type="button"
@@ -156,7 +168,7 @@ export function PipelinesFilters({
         </div>
       )}
 
-      <div className="filter-panel__body">
+      <div className={`filter-panel__body ${expanded ? "" : "hidden md:block"}`}>
         <div>
           <p className="filter-section-label">Refine</p>
           <div className="filter-tiles">

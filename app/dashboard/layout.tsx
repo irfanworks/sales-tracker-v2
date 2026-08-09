@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAuthUser, getProfile } from "@/lib/auth";
 import { DashboardShell } from "@/components/DashboardShell";
-import { OverdueOutcomeModal } from "@/components/OverdueOutcomeModal";
+import { LazyOverdueOutcomeModal } from "@/components/LazyOverdueOutcomeModal";
 import { getOverdueWithoutOutcome } from "@/lib/overdueOutcome";
 
 export default async function DashboardLayout({
@@ -21,13 +21,11 @@ export default async function DashboardLayout({
 
   return (
     <DashboardShell user={user} profile={profile}>
-      {overdue.count > 0 && (
-        <OverdueOutcomeModal
-          count={overdue.count}
-          items={overdue.items}
-          isAdmin={overdue.isAdmin}
-        />
-      )}
+      <LazyOverdueOutcomeModal
+        count={overdue.count}
+        items={overdue.items}
+        isAdmin={overdue.isAdmin}
+      />
       {children}
     </DashboardShell>
   );

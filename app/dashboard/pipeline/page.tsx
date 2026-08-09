@@ -1,15 +1,14 @@
 import { Suspense } from "react";
 import { getAuthUser, getProfile, getSalesOptions, getSupabase } from "@/lib/auth";
 import { getCurrencyRates } from "@/lib/currency";
-import { calcPipelineSecondaryMetrics, calcPipelineValueMetrics } from "@/lib/pipelineMetrics";
 import {
   PIPELINES_PAGE_SIZE,
   buildExportSearchParams,
   buildPipelinesListQuery,
-  buildPipelinesMetricsQuery,
   parsePipelineListParams,
   type PipelineListParams,
 } from "@/lib/pipelinesQuery";
+import { fetchPipelineListMetrics } from "@/lib/pipelineListMetrics";
 import { PipelinesTable } from "@/components/PipelinesTable";
 import { PipelinesFilters } from "@/components/PipelinesFilters";
 import { ExportPipelinesButton } from "@/components/ExportPipelinesButton";
@@ -29,7 +28,6 @@ export default async function PipelinesListPage({
   const profile = await getProfile();
   const isAdmin = profile?.role === "admin";
 
-  // Sales only see and monitor their own pipelines (cards + list + export)
   const params: PipelineListParams =
     !isAdmin && user
       ? { ...rawParams, sales_id: user.id }
@@ -40,22 +38,19 @@ export default async function PipelinesListPage({
   const to = from + PIPELINES_PAGE_SIZE - 1;
 
   const supabase = await getSupabase();
-  const [currencyRates, salesOptions, listResult, metricsResult] = await Promise.all([
+  const [currencyRates, salesOptions, listResult, metrics] = await Promise.all([
     getCurrencyRates(),
     getSalesOptions(),
-    buildPipelinesListQuery(supabase, params, { count: "exact", range: { from, to } }),
-    buildPipelinesMetricsQuery(supabase, params),
+    buildPipelinesListQuery(supabase, params, { count: "estimated", range: { from, to } }),
+    fetchPipelineListMetrics(supabase, params),
   ]);
 
   const { data: projectsRaw, error, count } = listResult;
-  const { data: metricsRows, error: metricsError } = metricsResult;
 
-  if (error || metricsError) {
+  if (error) {
     return (
       <div className="card p-6">
-        <p className="text-red-600">
-          Error loading pipelines: {error?.message ?? metricsError?.message}
-        </p>
+        <p className="text-red-600">Error loading pipelines: {error.message}</p>
       </div>
     );
   }
@@ -79,18 +74,15 @@ export default async function PipelinesListPage({
     sales_name: salesNames[p.sales_id] ?? null,
   }));
 
-  const metricRows = (metricsRows ?? []).map((p) => ({
-    value: p.value != null ? Number(p.value) : null,
-    progress_type: p.progress_type,
-    prospect: p.prospect,
-    outcome_status: p.outcome_status,
-    status: p.status,
-  }));
-
-  const { totalValueProject, totalValueWin, totalValueHotProspect } =
-    calcPipelineValueMetrics(metricRows);
-  const { projectLose, projectOnHold, valueProjectOnHold, tenderOnProgress } =
-    calcPipelineSecondaryMetrics(metricRows);
+  const {
+    totalValueProject,
+    totalValueWin,
+    totalValueHotProspect,
+    projectLose,
+    projectOnHold,
+    valueProjectOnHold,
+    tenderOnProgress,
+  } = metrics;
 
   const totalCount = count ?? 0;
   const exportQuery = buildExportSearchParams(params);
