@@ -54,7 +54,7 @@ export function QuoteSubmittedChart({
   series14d: DailyQuotePoint[];
   series30d: DailyQuotePoint[];
 }) {
-  const [range, setRange] = useState<DayRange>(14);
+  const [range, setRange] = useState<DayRange>(30);
   const [hovered, setHovered] = useState<string | null>(null);
 
   const data =

@@ -270,7 +270,7 @@ function customerSector(p: DashboardPipelineRow) {
   return c?.sector?.trim() || "Unspecified";
 }
 
-/** Work by category = pipeline_type (Project / Trading / Service) */
+/** Work by category = pipeline_type; same scope as Total Pipeline (active only) */
 export function buildWorkByCategory(projects: DashboardPipelineRow[]): BreakdownPoint[] {
   const order = ["Project", "Trading", "Service"];
   const map = new Map<string, BreakdownPoint>();
@@ -278,6 +278,7 @@ export function buildWorkByCategory(projects: DashboardPipelineRow[]): Breakdown
     map.set(label, { label, count: 0, value: 0 });
   }
   for (const p of projects) {
+    if (!isActivePipeline(p)) continue;
     const label = p.pipeline_type?.trim() || "Project";
     const row = map.get(label) ?? { label, count: 0, value: 0 };
     row.count += 1;
@@ -287,10 +288,11 @@ export function buildWorkByCategory(projects: DashboardPipelineRow[]): Breakdown
   return [...map.values()];
 }
 
-/** Work by sector = customer sector */
+/** Work by sector = customer sector; same scope as Total Pipeline (active only) */
 export function buildWorkBySector(projects: DashboardPipelineRow[]): BreakdownPoint[] {
   const map = new Map<string, BreakdownPoint>();
   for (const p of projects) {
+    if (!isActivePipeline(p)) continue;
     const label = customerSector(p);
     const row = map.get(label) ?? { label, count: 0, value: 0 };
     row.count += 1;
