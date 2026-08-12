@@ -17,7 +17,7 @@ export default async function CustomersPage() {
       slug,
       sector,
       created_at,
-      customer_pics ( id, nama )
+      customer_pics ( id, nama, email, no_hp, jabatan )
     `)
     .order("name");
 
@@ -39,13 +39,19 @@ export default async function CustomersPage() {
       sector: c.sector ?? null,
       created_at: c.created_at,
       pics: pics.map(
-        (p: { id?: string; nama: string | null }): CustomerPic => ({
+        (p: {
+          id?: string;
+          nama: string | null;
+          email?: string | null;
+          no_hp?: string | null;
+          jabatan?: string | null;
+        }): CustomerPic => ({
           id: p.id,
           customer_id: c.id,
           nama: p.nama,
-          email: null,
-          no_hp: null,
-          jabatan: null,
+          email: p.email ?? null,
+          no_hp: p.no_hp ?? null,
+          jabatan: p.jabatan ?? null,
         })
       ),
     };
@@ -59,9 +65,6 @@ export default async function CustomersPage() {
         description="Master data customer. Sector optional. At least one PIC (name) is required."
         actions={<ExportCustomersButton customers={normalized} />}
       />
-      <div className="table-shell">
-        <CustomersTable customers={normalized} />
-      </div>
       <AddCustomerPanel
         existingCustomers={normalized.map((c) => ({
           id: c.id,
@@ -70,6 +73,9 @@ export default async function CustomersPage() {
           sector: c.sector,
         }))}
       />
+      <div className="table-shell">
+        <CustomersTable customers={normalized} />
+      </div>
     </div>
   );
 }
