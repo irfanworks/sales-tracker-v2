@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PipelineListParams } from "@/lib/pipelinesQuery";
+import { sanitizePipelineSearch } from "@/lib/pipelinesQuery";
 import {
   calcPipelineSecondaryMetrics,
   calcPipelineValueMetrics,
@@ -27,8 +28,11 @@ const EMPTY_METRICS: PipelineListMetrics = {
 
 async function fetchMetricsFallback(
   supabase: SupabaseClient,
-  params: PipelineListParams
+  params: PipelineListParams,
+  searchCustomerIds: string[] = []
 ): Promise<PipelineListMetrics> {
+  const q = sanitizePipelineSearch(params.q);
+
   let query = supabase
     .from("pipelines")
     .select("value, progress_type, prospect, outcome_status, status");
@@ -37,6 +41,19 @@ async function fetchMetricsFallback(
   if (params.prospect) query = query.eq("prospect", params.prospect);
   if (params.outcome_status) query = query.eq("outcome_status", params.outcome_status);
   if (params.sales_id) query = query.eq("sales_id", params.sales_id);
+
+  if (q) {
+    const pattern = `%${q}%`;
+    const parts = [
+      `pipeline_name.ilike.${pattern}`,
+      `no_quote.ilike.${pattern}`,
+      `pic_name.ilike.${pattern}`,
+    ];
+    if (searchCustomerIds.length > 0) {
+      parts.push(`customer_id.in.(${searchCustomerIds.join(",")})`);
+    }
+    query = query.or(parts.join(","));
+  }
 
   const { data, error } = await query;
   if (error || !data) {
@@ -59,12 +76,18 @@ async function fetchMetricsFallback(
 
 /**
  * Server-side aggregates for the pipeline list summary cards.
- * Falls back to row transfer if the RPC is not deployed yet.
+ * Falls back to row transfer if the RPC is not deployed yet, or when text search is active.
  */
 export async function fetchPipelineListMetrics(
   supabase: SupabaseClient,
-  params: PipelineListParams
+  params: PipelineListParams,
+  searchCustomerIds: string[] = []
 ): Promise<PipelineListMetrics> {
+  const q = sanitizePipelineSearch(params.q);
+  if (q) {
+    return fetchMetricsFallback(supabase, params, searchCustomerIds);
+  }
+
   const { data, error } = await supabase.rpc("get_pipeline_list_metrics", {
     p_progress_type: params.progress_type ?? null,
     p_prospect: params.prospect ?? null,
@@ -74,7 +97,7 @@ export async function fetchPipelineListMetrics(
 
   if (error) {
     console.warn("[pipeline-metrics] RPC unavailable, using fallback:", error.message);
-    return fetchMetricsFallback(supabase, params);
+    return fetchMetricsFallback(supabase, params, searchCustomerIds);
   }
 
   const row = Array.isArray(data) ? data[0] : data;

@@ -6,6 +6,7 @@ import {
   buildExportSearchParams,
   buildPipelinesListQuery,
   parsePipelineListParams,
+  resolvePipelineSearchCustomerIds,
   type PipelineListParams,
 } from "@/lib/pipelinesQuery";
 import { fetchPipelineListMetrics } from "@/lib/pipelineListMetrics";
@@ -33,16 +34,21 @@ export default async function PipelinesListPage({
       ? { ...rawParams, sales_id: user.id }
       : rawParams;
 
-  const { page } = parsePipelineListParams(params);
+  const { page, q } = parsePipelineListParams(params);
   const from = (page - 1) * PIPELINES_PAGE_SIZE;
   const to = from + PIPELINES_PAGE_SIZE - 1;
 
   const supabase = await getSupabase();
+  const searchCustomerIds = q ? await resolvePipelineSearchCustomerIds(supabase, q) : [];
   const [currencyRates, salesOptions, listResult, metrics] = await Promise.all([
     getCurrencyRates(),
     getSalesOptions(),
-    buildPipelinesListQuery(supabase, params, { count: "estimated", range: { from, to } }),
-    fetchPipelineListMetrics(supabase, params),
+    buildPipelinesListQuery(supabase, params, {
+      count: "estimated",
+      range: { from, to },
+      searchCustomerIds,
+    }),
+    fetchPipelineListMetrics(supabase, params, searchCustomerIds),
   ]);
 
   const { data: projectsRaw, error, count } = listResult;
@@ -101,6 +107,7 @@ export default async function PipelinesListPage({
       />
       <Suspense fallback={<div className="card shimmer h-24 rounded-2xl" />}>
         <PipelinesFilters
+          q={params.q}
           progressType={params.progress_type}
           prospect={params.prospect}
           outcomeStatus={params.outcome_status}

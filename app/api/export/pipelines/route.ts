@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { format } from "date-fns";
 import { getAuthUser, getProfile, getSupabase } from "@/lib/auth";
-import { buildPipelinesListQuery } from "@/lib/pipelinesQuery";
+import { buildPipelinesListQuery, resolvePipelineSearchCustomerIds } from "@/lib/pipelinesQuery";
 import { buildPipelinesWorkbook } from "@/lib/exportPipelinesServer";
 
 export async function GET(request: NextRequest) {
@@ -19,8 +19,12 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await getSupabase();
+  const q = typeof params.q === "string" ? params.q : undefined;
+  const searchCustomerIds = q ? await resolvePipelineSearchCustomerIds(supabase, q) : [];
 
-  const { data: projectsRaw, error } = await buildPipelinesListQuery(supabase, params);
+  const { data: projectsRaw, error } = await buildPipelinesListQuery(supabase, params, {
+    searchCustomerIds,
+  });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

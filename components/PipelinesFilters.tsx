@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   OUTCOME_STATUSES,
@@ -14,6 +14,7 @@ import {
   Filter,
   Flame,
   ListFilter,
+  Search,
   Trophy,
   UserRound,
   X,
@@ -46,6 +47,7 @@ function FilterTile({
 }
 
 export function PipelinesFilters({
+  q,
   progressType,
   prospect,
   outcomeStatus,
@@ -58,6 +60,7 @@ export function PipelinesFilters({
   progressTypeOptions = PROGRESS_TYPES,
   basePath = "/dashboard",
 }: {
+  q?: string;
   progressType?: string;
   prospect?: string;
   outcomeStatus?: string;
@@ -73,6 +76,28 @@ export function PipelinesFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState(false);
+  const [searchDraft, setSearchDraft] = useState(q ?? "");
+
+  useEffect(() => {
+    setSearchDraft(q ?? "");
+  }, [q]);
+
+  useEffect(() => {
+    const trimmed = searchDraft.trim();
+    const current = (q ?? "").trim();
+    if (trimmed === current) return;
+
+    const handle = window.setTimeout(() => {
+      const next = new URLSearchParams(searchParams.toString());
+      if (trimmed) next.set("q", trimmed);
+      else next.delete("q");
+      next.delete("page");
+      const qs = next.toString();
+      router.push(qs ? `${basePath}?${qs}` : basePath);
+    }, 350);
+
+    return () => window.clearTimeout(handle);
+  }, [searchDraft, q, searchParams, router, basePath]);
 
   function updateFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams.toString());
@@ -88,6 +113,7 @@ export function PipelinesFilters({
     : null;
 
   const chips: { key: string; label: string; value: string }[] = [];
+  if (q?.trim()) chips.push({ key: "q", label: "Search", value: q.trim() });
   if (showProgressFilter && progressType) {
     chips.push({ key: "progress_type", label: "Progress", value: progressType });
   }
@@ -111,6 +137,46 @@ export function PipelinesFilters({
 
   return (
     <section className="filter-panel" aria-label="Pipeline filters">
+      <div className="border-b border-slate-200/70 px-4 py-3 sm:px-5">
+        <label className="relative block">
+          <span className="sr-only">Search pipelines</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const trimmed = searchDraft.trim();
+                const next = new URLSearchParams(searchParams.toString());
+                if (trimmed) next.set("q", trimmed);
+                else next.delete("q");
+                next.delete("page");
+                const qs = next.toString();
+                router.push(qs ? `${basePath}?${qs}` : basePath);
+              }
+            }}
+            placeholder="Search quote no, pipeline, customer, or PIC…"
+            className="input-field w-full pl-9 pr-9"
+            autoComplete="off"
+          />
+          {searchDraft ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchDraft("");
+                updateFilter("q", "");
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : null}
+        </label>
+      </div>
+
       <div className="filter-panel__header">
         <button
           type="button"
@@ -141,7 +207,10 @@ export function PipelinesFilters({
         {hasFilters && (
           <button
             type="button"
-            onClick={() => router.push(basePath)}
+            onClick={() => {
+              setSearchDraft("");
+              router.push(basePath);
+            }}
             className="btn-ghost gap-1.5 text-[12px] text-slate-600"
           >
             <X className="h-3.5 w-3.5" />
@@ -157,7 +226,10 @@ export function PipelinesFilters({
               key={chip.key}
               type="button"
               className="filter-chip"
-              onClick={() => updateFilter(chip.key, "")}
+              onClick={() => {
+                if (chip.key === "q") setSearchDraft("");
+                updateFilter(chip.key, "");
+              }}
               title={`Remove ${chip.label}`}
             >
               <span className="opacity-70">{chip.label}</span>
