@@ -77,7 +77,7 @@ export function DashboardNav({
   variant?: "sidebar" | "drawer";
 }) {
   const pathname = usePathname();
-  const isAdmin = role === "admin";
+  const isAdmin = (role ?? "").toLowerCase() === "admin";
 
   const navGroups: { title: string; items: NavItem[] }[] = [
     {

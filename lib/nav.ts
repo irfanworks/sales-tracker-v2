@@ -17,6 +17,9 @@ export function isNavActive(pathname: string, href: string): boolean {
       (pathname.startsWith(`${href}/`) && !pathname.startsWith(`${href}/new`))
     );
   }
+  if (href === "/dashboard/ai-analytics" || href === "/dashboard/lost-analysis") {
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
   return pathname.startsWith(href);
 }
 
