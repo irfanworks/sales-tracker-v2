@@ -227,9 +227,6 @@ export function QuoteSubmittedChart({
                     {d.dayLabel}
                   </text>
                 )}
-                <title>
-                  {d.label}: {d.count} quotes
-                </title>
               </g>
             );
           })}

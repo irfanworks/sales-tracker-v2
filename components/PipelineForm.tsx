@@ -5,17 +5,25 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2, Lock } from "lucide-react";
 import {
-  OUTCOME_STATUSES,
   PIPELINE_TYPES,
   PIC_SALUTATIONS,
   isPicSalutation,
-  type OutcomeStatus,
   type PaymentTermLine,
   type PicSalutation,
-  type ProgressType,
   type PipelineType,
-  type ProspectOption,
 } from "@/lib/types/database";
+import {
+  SALES_STAGES,
+  isSalesStage,
+  isTerminalWinLose,
+  needsOutcomeReason,
+  type SalesStage,
+} from "@/lib/salesStage";
+import { LostReasonFields } from "@/components/LostReasonFields";
+import {
+  validateLostReasonInput,
+  type LostReasonCategory,
+} from "@/lib/lostAnalysis";
 import {
   createPipelineAction,
   updatePipelineAction,
@@ -41,16 +49,13 @@ interface CustomerPicOption {
   nama: string | null;
 }
 
-interface Customer {
-  id: string;
-  name: string;
-  pics?: CustomerPicOption[];
-}
-
 interface PipelineFormProps {
-  customers: Customer[];
-  progressTypes: readonly ProgressType[];
-  prospectOptions: readonly ProspectOption[];
+  /** Optional seed for edit mode — avoid shipping the full customer master list. */
+  seedCustomer?: {
+    id: string;
+    name: string;
+    pics?: CustomerPicOption[];
+  } | null;
   project?: {
     id: string;
     no_quote: string;
@@ -58,9 +63,8 @@ interface PipelineFormProps {
     customer_id: string;
     value: number | null;
     pipeline_type?: PipelineType;
-    progress_type: ProgressType;
-    outcome_status?: OutcomeStatus | null;
-    prospect: ProspectOption;
+    sales_stage: SalesStage;
+    sales_stage_changed_at?: string | null;
     target_closing_at?: string | null;
     pic_name?: string | null;
     pic_salutation?: PicSalutation | null;
@@ -81,9 +85,7 @@ function normalizePaymentTerms(raw: PaymentTermLine[] | null | undefined): Payme
 }
 
 export function PipelineForm({
-  customers,
-  progressTypes,
-  prospectOptions,
+  seedCustomer,
   project,
   backPath,
 }: PipelineFormProps) {
@@ -93,7 +95,8 @@ export function PipelineForm({
   const [error, setError] = useState<string | null>(null);
   const [noQuote] = useState(project?.no_quote ?? "");
   const [projectName, setProjectName] = useState(project?.pipeline_name ?? "");
-  const [customerId, setCustomerId] = useState(project?.customer_id ?? "");
+  const [customerId, setCustomerId] = useState(project?.customer_id ?? seedCustomer?.id ?? "");
+  const [customerName, setCustomerName] = useState(seedCustomer?.name ?? "");
   const [picName, setPicName] = useState(project?.pic_name ?? "");
   const [picSalutation, setPicSalutation] = useState<PicSalutation | "">(
     isPicSalutation(project?.pic_salutation) ? project.pic_salutation : ""
@@ -104,15 +107,12 @@ export function PipelineForm({
   const [projectType, setPipelineType] = useState<PipelineType>(
     project?.pipeline_type ?? "Project"
   );
-  const [progressType, setProgressType] = useState<ProgressType>(
-    project?.progress_type ?? "Budgetary"
+  const [salesStage, setSalesStage] = useState<SalesStage>(
+    isSalesStage(project?.sales_stage) ? project.sales_stage : "Identified"
   );
-  const [outcomeStatus, setOutcomeStatus] = useState<OutcomeStatus | "">(
-    project?.outcome_status ?? ""
-  );
-  const [prospect, setProspect] = useState<ProspectOption>(
-    project?.prospect ?? "Normal"
-  );
+  const [lostCategory, setLostCategory] = useState<LostReasonCategory | "">("");
+  const [lostNotes, setLostNotes] = useState("");
+  const [reopenReason, setReopenReason] = useState("");
   const [initialUpdate, setInitialUpdate] = useState("");
   const [targetClosingAt, setTargetClosingAt] = useState(
     project?.target_closing_at ? project.target_closing_at.slice(0, 10) : ""
@@ -126,23 +126,28 @@ export function PipelineForm({
   const [paymentTerms, setPaymentTerms] = useState<PaymentTermLine[]>(() =>
     normalizePaymentTerms(project?.payment_terms)
   );
-  const [fetchedPics, setFetchedPics] = useState<CustomerPicOption[] | null>(null);
+  const [fetchedPics, setFetchedPics] = useState<CustomerPicOption[] | null>(
+    seedCustomer?.pics ?? null
+  );
   const [loadingPics, setLoadingPics] = useState(false);
 
   const commercialRequired = !isEdit;
 
-  const selectedCustomer = useMemo(
-    () => customers.find((c) => c.id === customerId) ?? null,
-    [customers, customerId]
-  );
+  const stageChangedLabel = useMemo(() => {
+    if (!isEdit || !project?.sales_stage_changed_at) return null;
+    const parsed = new Date(project.sales_stage_changed_at);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }, [isEdit, project?.sales_stage_changed_at]);
 
-  const picOptions = useMemo(() => {
-    const fromCustomer = selectedCustomer?.pics;
-    if (fromCustomer && fromCustomer.length > 0) {
-      return fromCustomer.filter((p) => p.nama?.trim());
-    }
-    return (fetchedPics ?? []).filter((p) => p.nama?.trim());
-  }, [selectedCustomer, fetchedPics]);
+  const picOptions = useMemo(
+    () => (fetchedPics ?? []).filter((p) => p.nama?.trim()),
+    [fetchedPics]
+  );
 
   useEffect(() => {
     if (!customerId) {
@@ -150,9 +155,8 @@ export function PipelineForm({
       return;
     }
 
-    const fromProps = customers.find((c) => c.id === customerId)?.pics;
-    if (fromProps) {
-      setFetchedPics(null);
+    if (seedCustomer?.id === customerId && seedCustomer.pics) {
+      setFetchedPics(seedCustomer.pics);
       return;
     }
 
@@ -174,11 +178,12 @@ export function PipelineForm({
     return () => {
       cancelled = true;
     };
-  }, [customerId, customers]);
+  }, [customerId, seedCustomer]);
 
-  function handleCustomerChange(nextId: string) {
-    setCustomerId(nextId);
-    if (nextId === project?.customer_id) {
+  function handleCustomerChange(next: { id: string; name: string } | null) {
+    setCustomerId(next?.id ?? "");
+    setCustomerName(next?.name ?? "");
+    if (next?.id === project?.customer_id) {
       setPicName(project?.pic_name ?? "");
       setPicSalutation(isPicSalutation(project?.pic_salutation) ? project.pic_salutation : "");
     } else {
@@ -264,11 +269,34 @@ export function PipelineForm({
       }
     }
 
-    setLoading(true);
+    const resolvedCustomerName = customerName.trim() || "customer";
 
-    const customerName = selectedCustomer?.name ?? "customer";
+    const stageChanged = !project || project.sales_stage !== salesStage;
+    const reopening = Boolean(
+      project &&
+        stageChanged &&
+        isTerminalWinLose(project.sales_stage) &&
+        !isTerminalWinLose(salesStage)
+    );
+    const capturingLost = stageChanged && needsOutcomeReason(salesStage);
+
+    if (reopening && !reopenReason.trim()) {
+      setError(`Reopening a ${project?.sales_stage} pipeline needs a reason.`);
+      return;
+    }
+    if (capturingLost) {
+      const invalid = validateLostReasonInput({
+        category: lostCategory,
+        notes: lostNotes,
+      });
+      if (invalid) {
+        setError(invalid);
+        return;
+      }
+    }
 
     if (project) {
+      setLoading(true);
       const result = await updatePipelineAction({
         id: project.id,
         no_quote: project.no_quote,
@@ -278,20 +306,19 @@ export function PipelineForm({
           pic_name: project.pic_name,
           pic_salutation: project.pic_salutation,
           pipeline_type: project.pipeline_type,
-          progress_type: project.progress_type,
-          outcome_status: project.outcome_status,
-          prospect: project.prospect,
+          sales_stage: project.sales_stage,
           target_closing_at: project.target_closing_at,
         },
         pipeline_name: projectName,
         customer_id: customerId,
-        customer_name: customerName,
+        customer_name: resolvedCustomerName,
         pic_name: picName.trim(),
         pic_salutation: picSalutation,
         pipeline_type: projectType,
-        progress_type: progressType,
-        outcome_status: outcomeStatus,
-        prospect,
+        sales_stage: salesStage,
+        stage_reason: reopening ? reopenReason.trim() : lostCategory || null,
+        stage_reason_category: capturingLost ? lostCategory || null : null,
+        stage_note: capturingLost ? lostNotes.trim() : null,
         target_closing_at: targetClosingAt,
         backPath,
       });
@@ -304,21 +331,22 @@ export function PipelineForm({
       router.push(result.redirectTo);
     } else {
       if (!isPicSalutation(picSalutation)) {
-        setLoading(false);
         setError("PIC salutation is required (Mr. / Mrs. / Ms.).");
         return;
       }
 
+      setLoading(true);
       const result = await createPipelineAction({
         pipeline_name: projectName,
         customer_id: customerId,
-        customer_name: customerName,
+        customer_name: resolvedCustomerName,
         pic_name: picName.trim(),
         pic_salutation: picSalutation,
         value: numValue,
         pipeline_type: projectType,
-        progress_type: progressType,
-        prospect,
+        sales_stage: salesStage,
+        stage_reason_category: capturingLost ? lostCategory || null : null,
+        stage_note: capturingLost ? lostNotes.trim() : null,
         target_closing_at: targetClosingAt,
         initial_update: initialUpdate.trim(),
         price_validity_days: priceValidityDays,
@@ -347,14 +375,14 @@ export function PipelineForm({
               <span className="sr-only"> (required)</span>
             </label>
             <CustomerSelectAutocomplete
-              customers={customers.map((c) => ({ id: c.id, name: c.name }))}
               valueId={customerId}
+              valueLabel={customerName}
               onSelect={handleCustomerChange}
               required
               placeholder="Search customer by name…"
             />
             {!customerId && (
-              <p className="pipeline-hint">Type to filter, then pick a customer from the list.</p>
+              <p className="pipeline-hint">Type to search, then pick a customer from the list.</p>
             )}
           </div>
           <div className="pipeline-field">
@@ -471,18 +499,52 @@ export function PipelineForm({
             </select>
           </div>
           <div className="pipeline-field">
-            <label className="pipeline-label">Progress Type</label>
+            <label className="pipeline-label">Sales Stage</label>
             <select
-              value={progressType}
-              onChange={(e) => setProgressType(e.target.value as ProgressType)}
+              value={salesStage}
+              onChange={(e) => setSalesStage(e.target.value as SalesStage)}
               className="input-field"
             >
-              {progressTypes.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {SALES_STAGES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
                 </option>
               ))}
             </select>
+            <p className="pipeline-hint">
+              {stageChangedLabel
+                ? `Win and Lose close the pipeline automatically. Stage last changed ${stageChangedLabel}.`
+                : "Win and Lose close the pipeline automatically; Lose and On Hold are excluded from Quoted Pipeline value."}
+            </p>
+            {needsOutcomeReason(salesStage) &&
+              (!project || project.sales_stage !== salesStage) && (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                  <LostReasonFields
+                    category={lostCategory}
+                    notes={lostNotes}
+                    onCategoryChange={setLostCategory}
+                    onNotesChange={setLostNotes}
+                    disabled={loading}
+                  />
+                </div>
+              )}
+            {project &&
+              isTerminalWinLose(project.sales_stage) &&
+              !isTerminalWinLose(salesStage) && (
+                <div className="mt-3">
+                  <label className="pipeline-label">
+                    Reopen reason
+                    <span className="pipeline-required" aria-hidden title="Required" />
+                  </label>
+                  <textarea
+                    value={reopenReason}
+                    onChange={(e) => setReopenReason(e.target.value)}
+                    className="input-field min-h-[4.5rem] resize-y"
+                    rows={3}
+                    placeholder={`Why is this moving out of ${project.sales_stage}?`}
+                  />
+                </div>
+              )}
           </div>
         </div>
 
@@ -513,20 +575,6 @@ export function PipelineForm({
                 ? "To change tender value, use Revisi Quote on the detail page (tracked history)."
                 : "Auto thousand separators (e.g. 1,000,000) to avoid typing mistakes."}
             </p>
-          </div>
-          <div className="pipeline-field">
-            <label className="pipeline-label">Prospect</label>
-            <select
-              value={prospect}
-              onChange={(e) => setProspect(e.target.value as ProspectOption)}
-              className="input-field"
-            >
-              {prospectOptions.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
@@ -596,24 +644,6 @@ export function PipelineForm({
 
       {isEdit && (
         <div className="pipeline-form-grid">
-          <div className="pipeline-field">
-            <label className="pipeline-label">Outcome status</label>
-            <select
-              value={outcomeStatus}
-              onChange={(e) => setOutcomeStatus(e.target.value as OutcomeStatus | "")}
-              className="input-field"
-            >
-              <option value="">None</option>
-              {OUTCOME_STATUSES.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-            <p className="pipeline-hint">
-              Win, Lose, or On Hold — On Hold is excluded from Quoted Pipeline value.
-            </p>
-          </div>
           <div className="pipeline-field">
             <label className="pipeline-label">Target closing date</label>
             <input

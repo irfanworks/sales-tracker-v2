@@ -14,12 +14,14 @@ const TONE: Record<string, string> = {
   pipeline_updated: "bg-sky-50 text-sky-800 ring-sky-200",
   pipeline_deleted: "bg-red-50 text-red-800 ring-red-200",
   pipeline_status_changed: "bg-amber-50 text-amber-900 ring-amber-200",
+  pipeline_stage_changed: "bg-violet-50 text-violet-900 ring-violet-200",
   pipeline_update_added: "bg-cyan-50 text-cyan-900 ring-cyan-200",
   quote_revised: "bg-indigo-50 text-indigo-900 ring-indigo-200",
   prospect_created: "bg-emerald-50 text-emerald-800 ring-emerald-200",
   prospect_updated: "bg-sky-50 text-sky-800 ring-sky-200",
   prospect_deleted: "bg-red-50 text-red-800 ring-red-200",
   prospect_update_added: "bg-cyan-50 text-cyan-900 ring-cyan-200",
+  prospect_converted: "bg-violet-50 text-violet-900 ring-violet-200",
 };
 
 function verbFor(actionType: string): string {

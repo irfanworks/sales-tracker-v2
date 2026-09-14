@@ -32,7 +32,7 @@ export function PipelinesSecondaryCards({
     {
       label: "Pipeline Lose",
       value: projectLose.toLocaleString("en-US"),
-      hint: "Count of Lose outcomes",
+      hint: "Count of Lose stage pipelines",
       icon: Ban,
       iconClass: "from-red-400 to-red-600",
       ring: "ring-red-200/50",
@@ -40,7 +40,7 @@ export function PipelinesSecondaryCards({
     {
       label: "Pipeline On Hold",
       value: projectOnHold.toLocaleString("en-US"),
-      hint: "Count of On Hold outcomes",
+      hint: "Count of On Hold stage pipelines",
       icon: PauseCircle,
       iconClass: "from-amber-400 to-amber-600",
       ring: "ring-amber-200/50",
@@ -56,7 +56,7 @@ export function PipelinesSecondaryCards({
     {
       label: "Tender On Progress",
       value: tenderOnProgress.toLocaleString("en-US"),
-      hint: "Open Tender pipelines still in progress",
+      hint: "Open pipelines in the Tender/RFQ stage",
       icon: FileSearch,
       iconClass: "from-blue-400 to-blue-600",
       ring: "ring-blue-200/50",

@@ -25,8 +25,11 @@ export default async function PipelinesListPage({
   searchParams: Promise<PipelineListParams>;
 }) {
   const rawParams = await searchParams;
-  const user = await getAuthUser();
-  const profile = await getProfile();
+  const [user, profile, supabase] = await Promise.all([
+    getAuthUser(),
+    getProfile(),
+    getSupabase(),
+  ]);
   const isAdmin = profile?.role === "admin";
 
   const params: PipelineListParams =
@@ -38,7 +41,6 @@ export default async function PipelinesListPage({
   const from = (page - 1) * PIPELINES_PAGE_SIZE;
   const to = from + PIPELINES_PAGE_SIZE - 1;
 
-  const supabase = await getSupabase();
   const searchCustomerIds = q ? await resolvePipelineSearchCustomerIds(supabase, q) : [];
   const [currencyRates, salesOptions, listResult, metrics] = await Promise.all([
     getCurrencyRates(),
@@ -50,7 +52,6 @@ export default async function PipelinesListPage({
     }),
     fetchPipelineListMetrics(supabase, params, searchCustomerIds),
   ]);
-
   const { data: projectsRaw, error, count } = listResult;
 
   if (error) {
@@ -83,7 +84,7 @@ export default async function PipelinesListPage({
   const {
     totalValueProject,
     totalValueWin,
-    totalValueHotProspect,
+    totalValueLateStage,
     projectLose,
     projectOnHold,
     valueProjectOnHold,
@@ -100,17 +101,15 @@ export default async function PipelinesListPage({
         title="Pipeline"
         description={
           isAdmin
-            ? "Budgetary and Tender pipelines across the team."
-            : "Your Budgetary and Tender pipelines — progress and metrics for your own pipeline."
+            ? "Quoted opportunities across the team, tracked by sales stage."
+            : "Your quoted opportunities — sales stage progress and metrics for your own pipeline."
         }
         actions={<ExportPipelinesButton exportQuery={exportQuery} disabled={totalCount === 0} />}
       />
       <Suspense fallback={<div className="card shimmer h-24 rounded-2xl" />}>
         <PipelinesFilters
           q={params.q}
-          progressType={params.progress_type}
-          prospect={params.prospect}
-          outcomeStatus={params.outcome_status}
+          salesStage={params.sales_stage}
           salesId={isAdmin ? params.sales_id : undefined}
           sortBy={params.sort_by}
           sortOrder={params.sort_order}
@@ -126,7 +125,7 @@ export default async function PipelinesListPage({
         <PipelinesSummaryCards
           totalValueProject={totalValueProject}
           totalValueWin={totalValueWin}
-          totalValueHotProspect={totalValueHotProspect}
+          totalValueLateStage={totalValueLateStage}
           projectLose={projectLose}
           projectOnHold={projectOnHold}
           valueProjectOnHold={valueProjectOnHold}
@@ -146,9 +145,8 @@ export default async function PipelinesListPage({
               value: p.value != null ? Number(p.value) : null,
               pipeline_type: p.pipeline_type,
               status: p.status,
-              progress_type: p.progress_type,
-              outcome_status: p.outcome_status,
-              prospect: p.prospect,
+              sales_stage: p.sales_stage,
+              sales_stage_changed_at: p.sales_stage_changed_at,
               weekly_update: null,
               target_closing_at: p.target_closing_at,
               sales_id: p.sales_id,

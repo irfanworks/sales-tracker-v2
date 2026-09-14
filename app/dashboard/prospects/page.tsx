@@ -16,8 +16,11 @@ export default async function ProspectsListPage({
   searchParams: Promise<{ status?: string; sales_id?: string; page?: string }>;
 }) {
   const rawParams = await searchParams;
-  const user = await getAuthUser();
-  const profile = await getProfile();
+  const [user, profile, supabase] = await Promise.all([
+    getAuthUser(),
+    getProfile(),
+    getSupabase(),
+  ]);
   const isAdmin = profile?.role === "admin";
 
   const status = rawParams.status;
@@ -26,7 +29,6 @@ export default async function ProspectsListPage({
   const from = (page - 1) * PROSPECTS_PAGE_SIZE;
   const to = from + PROSPECTS_PAGE_SIZE - 1;
 
-  const supabase = await getSupabase();
   let query = supabase
     .from("prospects")
     .select(

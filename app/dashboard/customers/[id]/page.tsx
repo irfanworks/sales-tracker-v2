@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CustomerEditForm } from "@/components/CustomerEditForm";
-import { SECTOR_OPTIONS } from "@/lib/types/database";
+import { CUSTOMER_ROLE_OPTIONS, SECTOR_OPTIONS } from "@/lib/types/database";
 import { ensureCustomerSlug, getCustomerBySlugOrId } from "@/lib/customers";
 import { getSupabase } from "@/lib/auth";
 import { isUuid } from "@/lib/isUuid";
@@ -65,6 +65,7 @@ export default async function CustomerEditPage({
           customerSlug={canonicalSlug}
           initialName={customer.name}
           initialSector={customer.sector ?? ""}
+          initialCustomerRole={customer.customer_role ?? ""}
           initialPics={(pics ?? []).map((p) => ({
             id: p.id,
             nama: p.nama ?? "",
@@ -73,6 +74,7 @@ export default async function CustomerEditPage({
             jabatan: p.jabatan ?? "",
           }))}
           sectorOptions={SECTOR_OPTIONS}
+          customerRoleOptions={CUSTOMER_ROLE_OPTIONS}
         />
       </div>
     </div>

@@ -6,22 +6,25 @@ import { format } from "date-fns";
 import { ExternalLink, Trash2, Loader2, FolderKanban } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { ProgressBadge } from "@/components/ProgressBadge";
-import { ProspectBadge } from "@/components/ProspectBadge";
 import {
-  OutcomeBulkButtons,
-  OutcomeStatusSwitcher,
-} from "@/components/OutcomeStatusSwitcher";
+  SalesStageBulkSelect,
+} from "@/components/SalesStageSwitcher";
+import { DeferredSalesStageCell } from "@/components/DeferredSalesStageCell";
 import { PipelineTypeBadge } from "@/components/PipelineTypeBadge";
-import { PipelineStatusToggle } from "@/components/PipelineStatusToggle";
+import { DeferredPipelineStatusCell } from "@/components/DeferredPipelineStatusCell";
 import { pipelineDetailPath } from "@/lib/pipelinePaths";
 import { customerDetailPath } from "@/lib/customerPaths";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useCurrencyScope } from "@/components/ui/CurrencyToggle";
-import type { LifecycleStatus, OutcomeStatus } from "@/lib/types/database";
+import type { LifecycleStatus } from "@/lib/types/database";
+import { isTerminalWinLose, needsOutcomeReason, type SalesStage } from "@/lib/salesStage";
 import { logSalesActivity } from "@/lib/salesActivity";
-import { bulkSetPipelineOutcomeAction } from "@/app/dashboard/pipeline/actions";
+import { bulkSetPipelineSalesStageAction } from "@/app/dashboard/pipeline/actions";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import {
+  StageReasonDialog,
+  type StageReasonPayload,
+} from "@/components/StageReasonDialog";
 
 const linkClass =
   "font-medium text-cyan-700 transition hover:text-cyan-800 hover:underline";
@@ -36,9 +39,8 @@ interface PipelineRow {
   value: number | null;
   pipeline_type?: string | null;
   status?: LifecycleStatus | null;
-  progress_type: string;
-  outcome_status?: string | null;
-  prospect: string;
+  sales_stage: string;
+  sales_stage_changed_at?: string | null;
   weekly_update: string | null;
   target_closing_at?: string | null;
   sales_id: string;
@@ -62,9 +64,10 @@ export function PipelinesTable({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [bulkOutcomeSaving, setBulkOutcomeSaving] = useState(false);
+  const [bulkStageSaving, setBulkStageSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [pendingBulkStage, setPendingBulkStage] = useState<SalesStage | null>(null);
 
   function formatValue(value: number | null) {
     if (value == null) return "—";
@@ -177,35 +180,32 @@ export function PipelinesTable({
     router.refresh();
   }
 
-  async function handleBulkOutcome(outcome: OutcomeStatus | null) {
+  async function handleBulkStage(stage: SalesStage) {
     if (selectedIds.size === 0) return;
-    const label = outcome ?? "cleared";
-    const confirmed = window.confirm(
-      `Set outcome to “${label}” for ${selectedIds.size} selected pipeline${selectedIds.size === 1 ? "" : "s"}?`
+    const selected = projects.filter((p) => selectedIds.has(p.id));
+    const reopening = selected.some(
+      (p) => isTerminalWinLose(p.sales_stage as SalesStage) && !isTerminalWinLose(stage)
     );
-    if (!confirmed) return;
+    if (needsOutcomeReason(stage) || reopening) {
+      setPendingBulkStage(stage);
+      return;
+    }
+    await runBulkStage(stage, { kind: "reopen", reason: "" });
+  }
 
+  async function runBulkStage(stage: SalesStage, payload: StageReasonPayload | { kind: "reopen"; reason: string }) {
     setError(null);
-    setBulkOutcomeSaving(true);
-    const ids = Array.from(selectedIds);
-    const rows = projects
-      .filter((p) => selectedIds.has(p.id))
-      .map((p) => {
-        const previousOutcome: OutcomeStatus | null =
-          p.outcome_status === "Win" ||
-          p.outcome_status === "Lose" ||
-          p.outcome_status === "On Hold"
-            ? p.outcome_status
-            : null;
-        return {
-          id: p.id,
-          label: `${p.no_quote} · ${p.pipeline_name}`,
-          previousOutcome,
-        };
-      });
+    setBulkStageSaving(true);
+    setPendingBulkStage(null);
 
-    const result = await bulkSetPipelineOutcomeAction({ ids, outcome, rows });
-    setBulkOutcomeSaving(false);
+    const result = await bulkSetPipelineSalesStageAction({
+      ids: Array.from(selectedIds),
+      stage,
+      reason: payload.kind === "reopen" ? payload.reason || null : payload.category,
+      note: payload.kind === "lost" ? payload.notes : null,
+      reasonCategory: payload.kind === "lost" ? payload.category : null,
+    });
+    setBulkStageSaving(false);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -239,23 +239,25 @@ export function PipelinesTable({
       {someSelected && (
         <div className="sticky top-[calc(var(--header-height)+env(safe-area-inset-top,0px))] z-[2] flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50/95 px-4 py-2.5 backdrop-blur-sm md:static md:bg-slate-50/90 md:backdrop-blur-none">
           <span className="text-sm font-medium text-slate-600">{selectedIds.size} selected</span>
-          <OutcomeBulkButtons
-            disabled={bulkDeleting || bulkOutcomeSaving}
-            onSelect={handleBulkOutcome}
+          <SalesStageBulkSelect
+            disabled={bulkDeleting || bulkStageSaving}
+            onSelect={(stage) => {
+              void handleBulkStage(stage);
+            }}
           />
           <button
             type="button"
             onClick={requestBulkDelete}
-            disabled={bulkDeleting || bulkOutcomeSaving}
+            disabled={bulkDeleting || bulkStageSaving}
             className="btn-secondary gap-2 text-red-700 hover:border-red-200 hover:bg-red-50"
           >
             {bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             Delete selected
           </button>
-          {bulkOutcomeSaving && (
+          {bulkStageSaving && (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Updating outcomes…
+              Updating sales stages…
             </span>
           )}
         </div>
@@ -282,6 +284,24 @@ export function PipelinesTable({
         }}
         onConfirm={() => {
           void executePendingDelete();
+        }}
+      />
+      <StageReasonDialog
+        open={pendingBulkStage != null}
+        mode={
+          pendingBulkStage === "Lose"
+            ? "lost-lose"
+            : pendingBulkStage === "On Hold"
+              ? "lost-hold"
+              : "reopen"
+        }
+        stageLabel={`${selectedIds.size} selected pipeline${selectedIds.size === 1 ? "" : "s"}`}
+        busy={bulkStageSaving}
+        onCancel={() => {
+          if (!bulkStageSaving) setPendingBulkStage(null);
+        }}
+        onConfirm={(payload) => {
+          if (pendingBulkStage) void runBulkStage(pendingBulkStage, payload);
         }}
       />
       {toolbar}
@@ -329,13 +349,11 @@ export function PipelinesTable({
                 </p>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   <PipelineTypeBadge value={p.pipeline_type ?? "Project"} />
-                  <ProgressBadge value={p.progress_type} />
-                  <ProspectBadge value={p.prospect} />
                 </div>
                 <div className="mt-3 flex flex-col gap-2.5 border-t border-slate-100 pt-2.5">
-                  <OutcomeStatusSwitcher
+                  <DeferredSalesStageCell
                     pipelineId={p.id}
-                    value={p.outcome_status}
+                    value={p.sales_stage}
                     pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
                     size="sm"
                   />
@@ -344,9 +362,10 @@ export function PipelinesTable({
                       <span>{p.sales_name ?? "—"}</span>
                       <span>{format(new Date(p.created_at), "dd MMM yyyy")}</span>
                     </div>
-                    <PipelineStatusToggle
+                    <DeferredPipelineStatusCell
                       projectId={p.id}
                       status={(p.status === "Closed" ? "Closed" : "Open") as LifecycleStatus}
+                      salesStage={p.sales_stage}
                       pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
                     />
                   </div>
@@ -402,9 +421,7 @@ export function PipelinesTable({
               <th className="whitespace-nowrap px-4 py-3.5">Customer</th>
               <th className="whitespace-nowrap px-4 py-3.5">Type</th>
               <th className="whitespace-nowrap px-4 py-3.5">Value</th>
-              <th className="whitespace-nowrap px-4 py-3.5">Progress</th>
-              <th className="whitespace-nowrap px-4 py-3.5">Prospect</th>
-              <th className="whitespace-nowrap px-4 py-3.5">Outcome</th>
+              <th className="whitespace-nowrap px-4 py-3.5">Sales Stage</th>
               <th className="whitespace-nowrap px-4 py-3.5">Sales</th>
               <th className="whitespace-nowrap px-4 py-3.5">Date</th>
               <th className="whitespace-nowrap px-4 py-3.5">Target closing</th>
@@ -458,15 +475,9 @@ export function PipelinesTable({
                   {formatValue(p.value)}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3.5">
-                  <ProgressBadge value={p.progress_type} />
-                </td>
-                <td className="whitespace-nowrap px-4 py-3.5">
-                  <ProspectBadge value={p.prospect} />
-                </td>
-                <td className="whitespace-nowrap px-4 py-3.5">
-                  <OutcomeStatusSwitcher
+                  <DeferredSalesStageCell
                     pipelineId={p.id}
-                    value={p.outcome_status}
+                    value={p.sales_stage}
                     pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
                     size="sm"
                   />
@@ -481,9 +492,10 @@ export function PipelinesTable({
                     : "—"}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3.5">
-                  <PipelineStatusToggle
+                  <DeferredPipelineStatusCell
                     projectId={p.id}
                     status={(p.status === "Closed" ? "Closed" : "Open") as LifecycleStatus}
+                    salesStage={p.sales_stage}
                     pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
                   />
                 </td>

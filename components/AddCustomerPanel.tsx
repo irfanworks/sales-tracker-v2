@@ -6,9 +6,9 @@ import { AddCustomerForm } from "@/components/AddCustomerForm";
 import type { CustomerNameOption } from "@/components/CustomerNameAutocomplete";
 
 export function AddCustomerPanel({
-  existingCustomers,
+  existingCustomers = [],
 }: {
-  existingCustomers: CustomerNameOption[];
+  existingCustomers?: CustomerNameOption[];
 }) {
   const [open, setOpen] = useState(false);
 

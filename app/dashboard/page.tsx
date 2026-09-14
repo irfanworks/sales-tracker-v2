@@ -155,7 +155,7 @@ export default async function DashboardPage({
 
       <DashboardHeroLayout
         totalPipelineValue={kpisRpc.totalPipelineValue}
-        hotProspectValue={kpisRpc.hotProspectValue}
+        lateStageValue={kpisRpc.lateStageValue}
         totalWon={kpisRpc.totalWon}
         closingForTarget={kpisRpc.closingForTarget}
         annualSalesTarget={target}

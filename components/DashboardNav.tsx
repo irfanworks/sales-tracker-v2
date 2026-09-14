@@ -10,32 +10,32 @@ import {
   Settings,
   Target,
   Activity,
+  Bot,
+  TrendingDown,
   type LucideIcon,
 } from "lucide-react";
 import { isNavActive, type NavItem } from "@/lib/nav";
 
-const navGroups: { title: string; items: NavItem[] }[] = [
-  {
-    title: "Overview",
-    items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/dashboard/sales-activity", label: "Sales Activity", icon: Activity },
-    ],
-  },
-  {
-    title: "Work",
-    items: [
-      { href: "/dashboard/pipeline", label: "Pipeline", icon: FolderKanban },
-      { href: "/dashboard/pipeline/new", label: "New Pipeline", icon: PlusCircle },
-      { href: "/dashboard/prospects", label: "Prospect", icon: Target },
-      { href: "/dashboard/prospects/new", label: "New Prospect", icon: PlusCircle },
-      { href: "/dashboard/customers", label: "Customers", icon: Users },
-    ],
-  },
-  {
-    title: "System",
-    items: [{ href: "/dashboard/settings", label: "Settings", icon: Settings }],
-  },
+const overviewItems: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/sales-activity", label: "Sales Activity", icon: Activity },
+];
+
+const adminOverviewItems: NavItem[] = [
+  { href: "/dashboard/ai-analytics", label: "AI Analytics", icon: Bot },
+];
+
+const workItems: NavItem[] = [
+  { href: "/dashboard/pipeline", label: "Pipeline", icon: FolderKanban },
+  { href: "/dashboard/lost-analysis", label: "Lost Analysis", icon: TrendingDown },
+  { href: "/dashboard/pipeline/new", label: "New Pipeline", icon: PlusCircle },
+  { href: "/dashboard/prospects", label: "Prospect", icon: Target },
+  { href: "/dashboard/prospects/new", label: "New Prospect", icon: PlusCircle },
+  { href: "/dashboard/customers", label: "Customers", icon: Users },
+];
+
+const systemItems: NavItem[] = [
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 function NavLink({
@@ -76,8 +76,17 @@ export function DashboardNav({
   /** @deprecated drawer removed — more sheet owns mobile secondary nav */
   variant?: "sidebar" | "drawer";
 }) {
-  void role;
   const pathname = usePathname();
+  const isAdmin = role === "admin";
+
+  const navGroups: { title: string; items: NavItem[] }[] = [
+    {
+      title: "Overview",
+      items: isAdmin ? [...overviewItems, ...adminOverviewItems] : overviewItems,
+    },
+    { title: "Work", items: workItems },
+    { title: "System", items: systemItems },
+  ];
 
   return (
     <nav className="flex h-full flex-col px-2.5 py-4">

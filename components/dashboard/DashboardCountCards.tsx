@@ -1,5 +1,3 @@
-"use client";
-
 import { FileText, Trophy, Flame, FileSearch } from "lucide-react";
 
 export function DashboardCountCards({

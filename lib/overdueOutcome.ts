@@ -1,12 +1,20 @@
 /**
  * Open pipelines whose target closing date is before today (Asia/Jakarta)
- * and that still have no outcome status.
+ * and whose sales stage has not been decided yet (no Win / Lose / On Hold).
  *
  * Uses a single list query with limit+1 to avoid an expensive exact count.
+ * Wrapped in React.cache so layout + home page share one fetch per request.
  */
+import { cache } from "react";
 import { getAuthUser, getProfile, getSupabase } from "@/lib/auth";
 import { pipelineDetailPath } from "@/lib/pipelinePaths";
+import { SALES_STAGES, isExcludedSalesStage, isTerminalWinLose } from "@/lib/salesStage";
 import { jakartaTodayKey } from "@/lib/timezone";
+
+/** Stages that still need a decision from the sales owner. */
+const UNDECIDED_STAGES = SALES_STAGES.filter(
+  (stage) => !isTerminalWinLose(stage) && !isExcludedSalesStage(stage)
+);
 
 export type OverdueOutcomePipeline = {
   id: string;
@@ -15,6 +23,7 @@ export type OverdueOutcomePipeline = {
   target_closing_at: string;
   customer_name: string;
   sales_name: string | null;
+  sales_stage: string | null;
   href: string;
   daysOverdue: number;
 };
@@ -33,7 +42,7 @@ type PipelineRow = {
   no_quote: string;
   pipeline_name: string;
   target_closing_at: string | null;
-  outcome_status?: string | null;
+  sales_stage?: string | null;
   sales_id: string;
   status?: string | null;
   customers?:
@@ -42,7 +51,9 @@ type PipelineRow = {
     | null;
 };
 
-export async function getOverdueWithoutOutcome(previewLimit = 8): Promise<{
+export const getOverdueWithoutOutcome = cache(async function getOverdueWithoutOutcome(
+  previewLimit = 8
+): Promise<{
   count: number;
   items: OverdueOutcomePipeline[];
   isAdmin: boolean;
@@ -63,15 +74,14 @@ export async function getOverdueWithoutOutcome(previewLimit = 8): Promise<{
       no_quote,
       pipeline_name,
       target_closing_at,
-      outcome_status,
+      sales_stage,
       sales_id,
-      status,
       customers ( name )
     `
     )
     .not("target_closing_at", "is", null)
     .lt("target_closing_at", today)
-    .is("outcome_status", null)
+    .in("sales_stage", UNDECIDED_STAGES)
     .or("status.is.null,status.eq.Open")
     .order("target_closing_at", { ascending: true })
     .limit(previewLimit + 1);
@@ -114,6 +124,7 @@ export async function getOverdueWithoutOutcome(previewLimit = 8): Promise<{
       target_closing_at: due,
       customer_name: customer?.name?.trim() || "—",
       sales_name: isAdmin ? salesNames[p.sales_id] || null : null,
+      sales_stage: p.sales_stage ?? null,
       href: pipelineDetailPath({
         id: p.id,
         slug: p.slug,
@@ -128,4 +139,4 @@ export async function getOverdueWithoutOutcome(previewLimit = 8): Promise<{
   const count = hasMore ? previewLimit + 1 : items.length;
 
   return { count, items, isAdmin };
-}
+});

@@ -6,9 +6,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
+  Bot,
   LogOut,
   PlusCircle,
   Settings,
+  TrendingDown,
   User,
   X,
 } from "lucide-react";
@@ -78,7 +80,11 @@ export function MobileMoreSheet({
   ];
 
   const otherItems = [
+    { href: "/dashboard/lost-analysis", label: "Lost Analysis", icon: TrendingDown },
     { href: "/dashboard/sales-activity", label: "Sales Activity", icon: Activity },
+    ...(profile?.role === "admin"
+      ? [{ href: "/dashboard/ai-analytics", label: "AI Analytics", icon: Bot }]
+      : []),
     { href: "/dashboard/settings", label: "Settings", icon: Settings },
   ];
 

@@ -6,15 +6,16 @@ import { PipelineForm } from "@/components/PipelineForm";
 import { PipelineUpdatesSection } from "@/components/PipelineUpdatesSection";
 import { QuoteRevisePanel } from "@/components/QuoteRevisePanel";
 import { QuoteRevisionsHistory } from "@/components/QuoteRevisionsHistory";
+import { PipelineStageHistory } from "@/components/PipelineStageHistory";
 import { DownloadQuotationButton } from "@/components/DownloadQuotationButton";
-import { ProgressBadge } from "@/components/ProgressBadge";
-import { ProspectBadge } from "@/components/ProspectBadge";
-import { OutcomeBadge } from "@/components/OutcomeBadge";
+import { SalesStageBadge } from "@/components/SalesStageBadge";
+import { SalesStageSwitcher } from "@/components/SalesStageSwitcher";
 import { PipelineTypeBadge } from "@/components/PipelineTypeBadge";
 import { PipelineStatusToggle } from "@/components/PipelineStatusToggle";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PROGRESS_TYPES, PROSPECT_OPTIONS, formatPicWithSalutation } from "@/lib/types/database";
+import { formatPicWithSalutation } from "@/lib/types/database";
 import type { LifecycleStatus, PaymentTermLine, PipelineType, QuoteRevision } from "@/lib/types/database";
+import type { PipelineStageHistoryRow, SalesStage } from "@/lib/salesStage";
 import { ensurePipelineSlug, getPipelineBySlugOrId } from "@/lib/pipelines";
 import { pipelineDetailPath } from "@/lib/pipelinePaths";
 import { getSupabase } from "@/lib/auth";
@@ -85,9 +86,9 @@ export default async function ProjectDetailPage({
     value,
     pipeline_type,
     status,
-    progress_type,
-    outcome_status,
-    prospect,
+    sales_stage,
+    sales_stage_changed_at,
+    source_prospect_id,
     target_closing_at,
     pic_name,
     pic_salutation,
@@ -118,40 +119,74 @@ export default async function ProjectDetailPage({
 
   const listPath = "/dashboard/pipeline";
 
-  const [{ data: updates }, { data: revisionRows }] = await Promise.all([
-    supabase
-      .from("pipeline_updates")
-      .select("id, content, created_at, created_by")
-      .eq("pipeline_id", projectId)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("quote_revisions")
-      .select(
-        "id, pipeline_id, revision, no_quote, value, price_validity_days, delivery_weeks, payment_terms, pipeline_name, notes, created_at, created_by"
-      )
-      .eq("pipeline_id", projectId)
-      .order("revision", { ascending: false }),
-  ]);
+  const [{ data: updates }, { data: revisionRows }, { data: stageHistoryRows }] =
+    await Promise.all([
+      supabase
+        .from("pipeline_updates")
+        .select("id, content, created_at, created_by")
+        .eq("pipeline_id", projectId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("quote_revisions")
+        .select(
+          "id, pipeline_id, revision, no_quote, value, price_validity_days, delivery_weeks, payment_terms, pipeline_name, notes, created_at, created_by"
+        )
+        .eq("pipeline_id", projectId)
+        .order("revision", { ascending: false }),
+      supabase
+        .from("pipeline_stage_history")
+        .select(
+          "id, pipeline_id, stage, previous_stage, changed_at, changed_by, note, reason, reason_category"
+        )
+        .eq("pipeline_id", projectId)
+        .order("changed_at", { ascending: false }),
+    ]);
+
+  const isEdit = edit === "true";
 
   const authorIds = [
     ...new Set(
       [
         ...(updates ?? []).map((u) => u.created_by),
         ...(revisionRows ?? []).map((r) => r.created_by),
+        ...(stageHistoryRows ?? []).map((h) => h.changed_by),
+        project.sales_id,
       ].filter(Boolean)
     ),
   ] as string[];
-  const authorNames: Record<string, string> = {};
 
-  if (authorIds.length > 0) {
-    const { data: authors } = await supabase
-      .from("profiles")
-      .select("id, display_name, full_name")
-      .in("id", authorIds);
-    (authors ?? []).forEach((a) => {
-      authorNames[a.id] = a.display_name ?? a.full_name ?? "Unknown";
-    });
-  }
+  const [{ data: authors }, { data: seedPics }] = await Promise.all([
+    authorIds.length > 0
+      ? supabase.from("profiles").select("id, display_name, full_name").in("id", authorIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; display_name: string | null; full_name: string | null }> }),
+    isEdit
+      ? supabase
+          .from("customer_pics")
+          .select("id, nama")
+          .eq("customer_id", project.customer_id)
+          .order("nama")
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const authorNames: Record<string, string> = {};
+  (authors ?? []).forEach((a) => {
+    authorNames[a.id] = a.display_name ?? a.full_name ?? "Unknown";
+  });
+
+  const stageHistory: Array<PipelineStageHistoryRow & { changer_name?: string | null }> = (
+    stageHistoryRows ?? []
+  ).map((h) => ({
+    id: h.id,
+    pipeline_id: h.pipeline_id,
+    stage: h.stage as SalesStage,
+    previous_stage: (h.previous_stage as SalesStage | null) ?? null,
+    changed_at: h.changed_at,
+    changed_by: h.changed_by,
+    note: h.note,
+    reason: h.reason,
+    reason_category: h.reason_category ?? null,
+    changer_name: h.changed_by ? authorNames[h.changed_by] ?? null : null,
+  }));
 
   const revisions: QuoteRevision[] = (revisionRows ?? []).map((r) => ({
     id: r.id,
@@ -169,30 +204,17 @@ export default async function ProjectDetailPage({
     author_name: r.created_by ? authorNames[r.created_by] ?? null : null,
   }));
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, full_name")
-    .eq("id", project.sales_id)
-    .single();
+  const salesDisplayName = authorNames[project.sales_id] ?? "—";
 
-  const { data: customers } = await supabase
-    .from("customers")
-    .select("id, name, customer_pics ( id, nama )")
-    .order("name");
-
-  const customersNormalized = (customers ?? []).map((c) => ({
-    id: c.id,
-    name: c.name,
-    pics: Array.isArray(c.customer_pics)
-      ? c.customer_pics.map((p: { id: string; nama: string | null }) => ({
-          id: p.id,
-          nama: p.nama,
-        }))
-      : [],
-  }));
-
-  const isEdit = edit === "true";
   const customer = Array.isArray(project.customers) ? project.customers[0] : project.customers;
+  const seedCustomer =
+    isEdit && customer
+      ? {
+          id: project.customer_id as string,
+          name: (customer as { name?: string })?.name ?? "",
+          pics: (seedPics ?? []).map((p) => ({ id: p.id, nama: p.nama })),
+        }
+      : null;
 
   return (
     <div className="space-y-6">
@@ -213,9 +235,7 @@ export default async function ProjectDetailPage({
         <div className="pipeline-form-card p-4 sm:p-6 md:p-8">
           <h1 className="pipeline-page-title mb-6">Edit Pipeline</h1>
           <PipelineForm
-            customers={customersNormalized}
-            progressTypes={PROGRESS_TYPES}
-            prospectOptions={PROSPECT_OPTIONS}
+            seedCustomer={seedCustomer}
             backPath={detailPath}
             project={{
               id: project.id,
@@ -224,9 +244,8 @@ export default async function ProjectDetailPage({
               customer_id: project.customer_id,
               value: project.value != null ? Number(project.value) : null,
               pipeline_type: (project.pipeline_type as PipelineType) ?? "Project",
-              progress_type: project.progress_type,
-              outcome_status: project.outcome_status,
-              prospect: project.prospect,
+              sales_stage: project.sales_stage as SalesStage,
+              sales_stage_changed_at: project.sales_stage_changed_at ?? null,
               target_closing_at: project.target_closing_at ?? null,
               pic_name: project.pic_name ?? null,
               pic_salutation: project.pic_salutation ?? null,
@@ -237,7 +256,8 @@ export default async function ProjectDetailPage({
           />
           <p className="pipeline-hint mt-8 border-t border-slate-100 pt-5">
             Tender value and commercial terms are changed via <strong>Revisi Quote</strong> on the
-            detail page so history stays accurate. Progress updates are never overwritten here.
+            detail page so history stays accurate. Sales stage is changed from the detail page
+            switcher so stage history stays accurate.
           </p>
         </div>
       ) : (
@@ -248,6 +268,11 @@ export default async function ProjectDetailPage({
             description={`${project.no_quote} · Created ${format(new Date(project.created_at), "dd MMM yyyy")}`}
             actions={
               <>
+                <SalesStageSwitcher
+                  pipelineId={project.id}
+                  value={project.sales_stage}
+                  pipelineLabel={`${project.no_quote} · ${project.pipeline_name}`}
+                />
                 <DownloadQuotationButton pipelineIdOrSlug={canonicalSlug} />
                 <QuoteRevisePanel
                   project={{
@@ -348,33 +373,35 @@ export default async function ProjectDetailPage({
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Progress Type
+                  Sales Stage
                 </dt>
                 <dd className="mt-1">
-                  <ProgressBadge value={project.progress_type} />
+                  <SalesStageBadge value={project.sales_stage} />
                 </dd>
+                {project.sales_stage_changed_at && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Since {format(new Date(project.sales_stage_changed_at), "dd MMM yyyy")}
+                  </p>
+                )}
               </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Outcome
-                </dt>
-                <dd className="mt-1">
-                  <OutcomeBadge value={project.outcome_status} />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Prospect
-                </dt>
-                <dd className="mt-1">
-                  <ProspectBadge value={project.prospect} />
-                </dd>
-              </div>
+              {project.source_prospect_id && (
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Converted from
+                  </dt>
+                  <dd className="mt-1">
+                    <Link
+                      href={`/dashboard/prospects/${project.source_prospect_id}`}
+                      className="font-medium text-cyan-700 hover:underline"
+                    >
+                      Source prospect
+                    </Link>
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">Sales</dt>
-                <dd className="mt-1 text-slate-700">
-                  {profile?.display_name ?? profile?.full_name ?? "—"}
-                </dd>
+                <dd className="mt-1 text-slate-700">{salesDisplayName}</dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -396,12 +423,15 @@ export default async function ProjectDetailPage({
                     status={
                       (project.status === "Closed" ? "Closed" : "Open") as LifecycleStatus
                     }
+                    salesStage={project.sales_stage}
                     pipelineLabel={`${project.no_quote} · ${project.pipeline_name}`}
                   />
                 </dd>
               </div>
             </dl>
           </div>
+
+          <PipelineStageHistory entries={stageHistory} />
 
           <QuoteRevisionsHistory
             current={{

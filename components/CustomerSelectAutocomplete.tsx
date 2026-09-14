@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Search, X } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Check, ChevronsUpDown, Loader2, Search, X } from "lucide-react";
 
 export type CustomerPickerOption = {
   id: string;
@@ -12,18 +12,21 @@ function normalize(value: string) {
   return value.trim().toLowerCase();
 }
 
-/** Searchable customer picker — selects an existing customer by id (Pipeline / Prospect). */
+/**
+ * Remote searchable customer picker. Optionally seed with the currently
+ * selected customer so edit forms do not need the full master list.
+ */
 export function CustomerSelectAutocomplete({
-  customers,
   valueId,
+  valueLabel,
   onSelect,
   disabled,
   placeholder = "Search customer…",
   required,
 }: {
-  customers: CustomerPickerOption[];
   valueId: string;
-  onSelect: (customerId: string) => void;
+  valueLabel?: string;
+  onSelect: (customer: { id: string; name: string } | null) => void;
   disabled?: boolean;
   placeholder?: string;
   required?: boolean;
@@ -32,49 +35,77 @@ export function CustomerSelectAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selected = useMemo(
-    () => customers.find((c) => c.id === valueId) ?? null,
-    [customers, valueId]
-  );
-
-  const [query, setQuery] = useState(selected?.name ?? "");
+  const [query, setQuery] = useState(valueLabel ?? "");
+  const [selectedLabel, setSelectedLabel] = useState(valueLabel ?? "");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [suggestions, setSuggestions] = useState<CustomerPickerOption[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Keep input in sync when parent resets / loads edit value
   useEffect(() => {
-    setQuery(selected?.name ?? "");
-  }, [selected?.id, selected?.name]);
+    setQuery(valueLabel ?? "");
+    setSelectedLabel(valueLabel ?? "");
+  }, [valueId, valueLabel]);
 
-  const suggestions = useMemo(() => {
-    const q = normalize(query);
-    const sorted = [...customers].sort((a, b) => a.name.localeCompare(b.name));
-    if (!q) return sorted;
-    return sorted.filter((c) => normalize(c.name).includes(q));
-  }, [customers, query]);
+  useEffect(() => {
+    if (!open) return;
+    const q = query.trim();
+    if (q.length < 1) {
+      setSuggestions([]);
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/customers/search?q=${encodeURIComponent(q)}&limit=20`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) throw new Error("search failed");
+        const body = (await res.json()) as { customers?: CustomerPickerOption[] };
+        setSuggestions(body.customers ?? []);
+        setActiveIndex(0);
+      } catch (err) {
+        if ((err as { name?: string })?.name === "AbortError") return;
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 220);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [query, open]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setOpen(false);
-        // Snap back to selected name if user abandoned mid-type
-        setQuery(selected?.name ?? "");
+        setQuery(selectedLabel);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [selected?.name]);
+  }, [selectedLabel]);
 
   function pick(customer: CustomerPickerOption) {
-    onSelect(customer.id);
+    onSelect(customer);
     setQuery(customer.name);
+    setSelectedLabel(customer.name);
     setOpen(false);
     setActiveIndex(0);
   }
 
   function clear() {
-    onSelect("");
+    onSelect(null);
     setQuery("");
+    setSelectedLabel("");
+    setSuggestions([]);
     setOpen(true);
     setActiveIndex(0);
     inputRef.current?.focus();
@@ -83,7 +114,7 @@ export function CustomerSelectAutocomplete({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Escape") {
       setOpen(false);
-      setQuery(selected?.name ?? "");
+      setQuery(selectedLabel);
       return;
     }
 
@@ -111,7 +142,6 @@ export function CustomerSelectAutocomplete({
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Hidden required field so native form validation still works */}
       {required && (
         <input
           tabIndex={-1}
@@ -137,9 +167,8 @@ export function CustomerSelectAutocomplete({
             setQuery(next);
             setOpen(true);
             setActiveIndex(0);
-            // Typing away from selection clears id until they pick again
-            if (selected && normalize(next) !== normalize(selected.name)) {
-              onSelect("");
+            if (valueId && normalize(next) !== normalize(selectedLabel)) {
+              onSelect(null);
             }
           }}
           onFocus={() => {
@@ -162,6 +191,7 @@ export function CustomerSelectAutocomplete({
           }
         />
         <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+          {loading && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin text-slate-400" />}
           {valueId && !disabled && (
             <button
               type="button"
@@ -194,8 +224,16 @@ export function CustomerSelectAutocomplete({
           role="listbox"
           className="absolute z-30 mt-1.5 max-h-64 w-full overflow-auto rounded-xl border border-border-soft bg-card py-1.5 shadow-elevated animate-fade-in"
         >
-          {suggestions.length === 0 ? (
-            <li className="px-3.5 py-3 text-[13px] text-slate-500">No customers match “{query}”.</li>
+          {query.trim().length < 1 ? (
+            <li className="px-3.5 py-3 text-[13px] text-slate-500">
+              Type at least 1 character to search.
+            </li>
+          ) : loading && suggestions.length === 0 ? (
+            <li className="px-3.5 py-3 text-[13px] text-slate-500">Searching…</li>
+          ) : suggestions.length === 0 ? (
+            <li className="px-3.5 py-3 text-[13px] text-slate-500">
+              No customers match “{query}”.
+            </li>
           ) : (
             suggestions.map((customer, index) => {
               const isActive = index === activeIndex;
@@ -226,9 +264,9 @@ export function CustomerSelectAutocomplete({
         </ul>
       )}
 
-      {selected && (
+      {valueId && selectedLabel && (
         <p className="pipeline-hint !mt-1.5">
-          Selected: <span className="font-medium text-slate-600">{selected.name}</span>
+          Selected: <span className="font-medium text-slate-600">{selectedLabel}</span>
         </p>
       )}
     </div>

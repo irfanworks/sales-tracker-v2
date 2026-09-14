@@ -1,15 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PipelineListParams } from "@/lib/pipelinesQuery";
 import { sanitizePipelineSearch } from "@/lib/pipelinesQuery";
-import {
-  calcPipelineSecondaryMetrics,
-  calcPipelineValueMetrics,
-} from "@/lib/pipelineMetrics";
 
 export type PipelineListMetrics = {
   totalValueProject: number;
   totalValueWin: number;
-  totalValueHotProspect: number;
+  totalValueLateStage: number;
   projectLose: number;
   projectOnHold: number;
   valueProjectOnHold: number;
@@ -19,64 +15,29 @@ export type PipelineListMetrics = {
 const EMPTY_METRICS: PipelineListMetrics = {
   totalValueProject: 0,
   totalValueWin: 0,
-  totalValueHotProspect: 0,
+  totalValueLateStage: 0,
   projectLose: 0,
   projectOnHold: 0,
   valueProjectOnHold: 0,
   tenderOnProgress: 0,
 };
 
-async function fetchMetricsFallback(
-  supabase: SupabaseClient,
-  params: PipelineListParams,
-  searchCustomerIds: string[] = []
-): Promise<PipelineListMetrics> {
-  const q = sanitizePipelineSearch(params.q);
-
-  let query = supabase
-    .from("pipelines")
-    .select("value, progress_type, prospect, outcome_status, status");
-
-  if (params.progress_type) query = query.eq("progress_type", params.progress_type);
-  if (params.prospect) query = query.eq("prospect", params.prospect);
-  if (params.outcome_status) query = query.eq("outcome_status", params.outcome_status);
-  if (params.sales_id) query = query.eq("sales_id", params.sales_id);
-
-  if (q) {
-    const pattern = `%${q}%`;
-    const parts = [
-      `pipeline_name.ilike.${pattern}`,
-      `no_quote.ilike.${pattern}`,
-      `pic_name.ilike.${pattern}`,
-    ];
-    if (searchCustomerIds.length > 0) {
-      parts.push(`customer_id.in.(${searchCustomerIds.join(",")})`);
-    }
-    query = query.or(parts.join(","));
-  }
-
-  const { data, error } = await query;
-  if (error || !data) {
-    console.error("[pipeline-metrics-fallback]", error?.message);
-    return EMPTY_METRICS;
-  }
-
-  const rows = data.map((p) => ({
-    value: p.value != null ? Number(p.value) : null,
-    progress_type: p.progress_type,
-    prospect: p.prospect,
-    outcome_status: p.outcome_status,
-    status: p.status,
-  }));
-
-  const values = calcPipelineValueMetrics(rows);
-  const secondary = calcPipelineSecondaryMetrics(rows);
-  return { ...values, ...secondary };
+function mapRpcRow(row: Record<string, unknown> | null | undefined): PipelineListMetrics {
+  if (!row) return EMPTY_METRICS;
+  return {
+    totalValueProject: Number(row.total_value_project ?? 0),
+    totalValueWin: Number(row.total_value_win ?? 0),
+    totalValueLateStage: Number(row.total_value_hot_prospect ?? 0),
+    projectLose: Number(row.project_lose ?? 0),
+    projectOnHold: Number(row.project_on_hold ?? 0),
+    valueProjectOnHold: Number(row.value_project_on_hold ?? 0),
+    tenderOnProgress: Number(row.tender_on_progress ?? 0),
+  };
 }
 
 /**
  * Server-side aggregates for the pipeline list summary cards.
- * Falls back to row transfer if the RPC is not deployed yet, or when text search is active.
+ * Prefer DB RPCs so Node never receives every matching row.
  */
 export async function fetchPipelineListMetrics(
   supabase: SupabaseClient,
@@ -84,32 +45,34 @@ export async function fetchPipelineListMetrics(
   searchCustomerIds: string[] = []
 ): Promise<PipelineListMetrics> {
   const q = sanitizePipelineSearch(params.q);
+
   if (q) {
-    return fetchMetricsFallback(supabase, params, searchCustomerIds);
+    const { data, error } = await supabase.rpc("get_pipeline_list_metrics_search", {
+      p_sales_stage: params.sales_stage ?? null,
+      p_sales_id: params.sales_id ?? null,
+      p_q: q,
+      p_customer_ids: searchCustomerIds.length > 0 ? searchCustomerIds : null,
+    });
+
+    if (!error) {
+      const row = Array.isArray(data) ? data[0] : data;
+      return mapRpcRow(row as Record<string, unknown> | null);
+    }
+    // Do not fall back to unfiltered metrics — that would mislead users while searching.
+    console.warn("[pipeline-metrics-search] RPC unavailable:", error.message);
+    return EMPTY_METRICS;
   }
 
   const { data, error } = await supabase.rpc("get_pipeline_list_metrics", {
-    p_progress_type: params.progress_type ?? null,
-    p_prospect: params.prospect ?? null,
-    p_outcome_status: params.outcome_status ?? null,
+    p_sales_stage: params.sales_stage ?? null,
     p_sales_id: params.sales_id ?? null,
   });
 
   if (error) {
-    console.warn("[pipeline-metrics] RPC unavailable, using fallback:", error.message);
-    return fetchMetricsFallback(supabase, params, searchCustomerIds);
+    console.warn("[pipeline-metrics] RPC unavailable:", error.message);
+    return EMPTY_METRICS;
   }
 
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return EMPTY_METRICS;
-
-  return {
-    totalValueProject: Number(row.total_value_project ?? 0),
-    totalValueWin: Number(row.total_value_win ?? 0),
-    totalValueHotProspect: Number(row.total_value_hot_prospect ?? 0),
-    projectLose: Number(row.project_lose ?? 0),
-    projectOnHold: Number(row.project_on_hold ?? 0),
-    valueProjectOnHold: Number(row.value_project_on_hold ?? 0),
-    tenderOnProgress: Number(row.tender_on_progress ?? 0),
-  };
+  return mapRpcRow(row as Record<string, unknown> | null);
 }

@@ -23,6 +23,7 @@ function matchesCustomerSearch(c: CustomerRow, q: string): boolean {
   if (!q) return true;
   if (c.name.toLowerCase().includes(q)) return true;
   if ((c.sector ?? "").toLowerCase().includes(q)) return true;
+  if ((c.customer_role ?? "").toLowerCase().includes(q)) return true;
   return (c.pics ?? []).some((p) => {
     const hay = [p.nama, p.email, p.jabatan, p.no_hp]
       .filter(Boolean)
@@ -230,7 +231,7 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
         <EmptyState
           icon={Search}
           title="No customers match"
-          description="Try another name, sector, or PIC. Clear search to see everyone."
+          description="Try another name, sector, role, or PIC. Clear search to see everyone."
         />
       ) : (
         <>
@@ -251,6 +252,7 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
                       {c.name}
                     </Link>
                     <p className="mobile-list-sub mt-1">{c.sector ?? "No sector"}</p>
+                    <p className="mobile-list-meta mt-1">{c.customer_role ?? "No customer role"}</p>
                     {c.pics && c.pics.length > 0 && (
                       <p className="mobile-list-meta mt-1">
                         PIC: {c.pics.map((p) => p.nama || p.email || "—").join(", ")}
@@ -303,6 +305,7 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
                   </th>
                   <th className="px-4 py-3.5">Name</th>
                   <th className="px-4 py-3.5">Sector</th>
+                  <th className="px-4 py-3.5">Customer role</th>
                   <th className="px-4 py-3.5">PICs</th>
                   <th className="px-4 py-3.5">Created</th>
                   <th className="w-32 px-4 py-3.5">Actions</th>
@@ -328,6 +331,7 @@ export function CustomersTable({ customers }: { customers: CustomerRow[] }) {
                       </Link>
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">{c.sector ?? "—"}</td>
+                    <td className="px-4 py-3.5 text-slate-600">{c.customer_role ?? "—"}</td>
                     <td className="px-4 py-3.5 text-slate-600">
                       {c.pics && c.pics.length > 0
                         ? c.pics.map((p) => p.nama || p.email || "—").join(", ")

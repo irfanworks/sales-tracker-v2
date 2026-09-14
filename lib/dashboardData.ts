@@ -17,7 +17,7 @@ export type DashboardKpisRpc = {
   totalPipelineValue: number;
   totalWon: number;
   closingForTarget: number;
-  hotProspectValue: number;
+  lateStageValue: number;
   totalProposals: number;
   totalProjectWinCount: number;
   tenderOnProgress: number;
@@ -27,7 +27,7 @@ const EMPTY_KPIS: DashboardKpisRpc = {
   totalPipelineValue: 0,
   totalWon: 0,
   closingForTarget: 0,
-  hotProspectValue: 0,
+  lateStageValue: 0,
   totalProposals: 0,
   totalProjectWinCount: 0,
   tenderOnProgress: 0,
@@ -42,14 +42,20 @@ const ATTENTION_SELECT = `
   customer_id,
   value,
   pipeline_type,
-  progress_type,
-  outcome_status,
-  prospect,
+  sales_stage,
+  sales_stage_changed_at,
   status,
   target_closing_at,
   sales_id,
   customers ( id, name, slug, sector )
 `;
+
+/** Stages that carry momentum toward closing — replaces the old Hot Prospect heat. */
+const LATE_STAGES = [
+  "Technical Clarification",
+  "Commercial Negotiation",
+  "LOA/PO Pending",
+];
 
 type RpcNumRow = Record<string, unknown>;
 
@@ -73,7 +79,8 @@ export async function fetchDashboardKpis(
     totalPipelineValue: Number(row.total_pipeline_value ?? 0),
     totalWon: Number(row.total_won ?? 0),
     closingForTarget: Number(row.closing_for_target ?? 0),
-    hotProspectValue: Number(row.hot_prospect_value ?? 0),
+    // RPC keeps the legacy column name; it now aggregates late-stage open value
+    lateStageValue: Number(row.hot_prospect_value ?? 0),
     totalProposals: Number(row.total_proposals ?? 0),
     totalProjectWinCount: Number(row.total_project_win_count ?? 0),
     tenderOnProgress: Number(row.tender_on_progress ?? 0),
@@ -139,8 +146,8 @@ export async function fetchDashboardChartSeries(
 
   const winsBase = supabase
     .from("pipelines")
-    .select("created_at, value, outcome_status")
-    .eq("outcome_status", "Win")
+    .select("created_at, value, sales_stage")
+    .eq("sales_stage", "Win")
     .gte("created_at", yearStart)
     .lt("created_at", yearEnd);
 
@@ -185,10 +192,10 @@ export async function fetchDashboardAttentionLists(
     .order("target_closing_at", { ascending: true })
     .limit(ATTENTION_LIMIT);
 
-  let hotProspectQuery = db
+  let lateStageQuery = db
     .from("pipelines")
     .select(ATTENTION_SELECT)
-    .eq("prospect", "Hot Prospect")
+    .in("sales_stage", LATE_STAGES)
     .or("status.is.null,status.eq.Open")
     .order("target_closing_at", { ascending: true, nullsFirst: false })
     .limit(ATTENTION_LIMIT);
@@ -196,7 +203,7 @@ export async function fetchDashboardAttentionLists(
   let tenderQuery = db
     .from("pipelines")
     .select(ATTENTION_SELECT)
-    .eq("progress_type", "Tender")
+    .eq("sales_stage", "Tender/RFQ")
     .or("status.is.null,status.eq.Open")
     .order("target_closing_at", { ascending: true, nullsFirst: false })
     .limit(ATTENTION_LIMIT);
@@ -213,14 +220,14 @@ export async function fetchDashboardAttentionLists(
 
   if (salesId) {
     overdueQuery = overdueQuery.eq("sales_id", salesId);
-    hotProspectQuery = hotProspectQuery.eq("sales_id", salesId);
+    lateStageQuery = lateStageQuery.eq("sales_id", salesId);
     tenderQuery = tenderQuery.eq("sales_id", salesId);
     nearOverdueQuery = nearOverdueQuery.eq("sales_id", salesId);
   }
 
-  const [overdueResult, hotResult, tenderResult, nearResult] = await Promise.all([
+  const [overdueResult, lateResult, tenderResult, nearResult] = await Promise.all([
     overdueQuery,
-    hotProspectQuery,
+    lateStageQuery,
     tenderQuery,
     nearOverdueQuery,
   ]);
@@ -228,7 +235,7 @@ export async function fetchDashboardAttentionLists(
   const overdueRows = (overdueResult.data ?? []) as DashboardPipelineRow[];
   const byId = new Map<string, DashboardPipelineRow>();
   for (const row of [
-    ...((hotResult.data ?? []) as DashboardPipelineRow[]),
+    ...((lateResult.data ?? []) as DashboardPipelineRow[]),
     ...((tenderResult.data ?? []) as DashboardPipelineRow[]),
     ...((nearResult.data ?? []) as DashboardPipelineRow[]),
   ]) {

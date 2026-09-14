@@ -5,12 +5,14 @@ export type SalesActivityActionType =
   | "pipeline_updated"
   | "pipeline_deleted"
   | "pipeline_status_changed"
+  | "pipeline_stage_changed"
   | "pipeline_update_added"
   | "quote_revised"
   | "prospect_created"
   | "prospect_updated"
   | "prospect_deleted"
-  | "prospect_update_added";
+  | "prospect_update_added"
+  | "prospect_converted";
 
 export type SalesActivityEntityType = "pipeline" | "prospect";
 
@@ -93,12 +95,14 @@ export const SALES_ACTIVITY_ACTION_LABELS: Record<SalesActivityActionType, strin
   pipeline_updated: "Edited pipeline",
   pipeline_deleted: "Deleted pipeline",
   pipeline_status_changed: "Status change",
+  pipeline_stage_changed: "Sales stage",
   pipeline_update_added: "Progress note",
   quote_revised: "Quote revised",
   prospect_created: "New prospect",
   prospect_updated: "Edited prospect",
   prospect_deleted: "Deleted prospect",
   prospect_update_added: "Progress note",
+  prospect_converted: "Converted prospect",
 };
 
 /** Verb tone for directors scanning the feed */
@@ -107,10 +111,12 @@ export const SALES_ACTIVITY_ACTION_VERB: Record<SalesActivityActionType, string>
   pipeline_updated: "Changed",
   pipeline_deleted: "Deleted",
   pipeline_status_changed: "Status",
+  pipeline_stage_changed: "Stage",
   pipeline_update_added: "Noted",
   quote_revised: "Revised",
   prospect_created: "Created",
   prospect_updated: "Changed",
   prospect_deleted: "Deleted",
   prospect_update_added: "Noted",
+  prospect_converted: "Converted",
 };

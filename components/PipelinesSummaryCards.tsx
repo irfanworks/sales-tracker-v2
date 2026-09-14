@@ -8,7 +8,7 @@ import { PipelinesSecondaryCards } from "@/components/PipelinesSecondaryCards";
 export function PipelinesSummaryCards({
   totalValueProject,
   totalValueWin,
-  totalValueHotProspect,
+  totalValueLateStage,
   projectLose,
   projectOnHold,
   valueProjectOnHold,
@@ -18,7 +18,7 @@ export function PipelinesSummaryCards({
 }: {
   totalValueProject: number;
   totalValueWin: number;
-  totalValueHotProspect: number;
+  totalValueLateStage: number;
   projectLose: number;
   projectOnHold: number;
   valueProjectOnHold: number;
@@ -55,21 +55,21 @@ export function PipelinesSummaryCards({
         <MetricCard
           label="Quoted Pipeline"
           value={<span className={valueClass}>{formatValue(totalValueProject)}</span>}
-          hint="Excluding Lose and On Hold outcomes"
+          hint="Open pipelines, excluding Lose and On Hold stages"
           icon={BarChart3}
           variant="default"
         />
         <MetricCard
           label="Project Win"
           value={<span className={valueClass}>{formatValue(totalValueWin)}</span>}
-          hint="Win outcome in current view"
+          hint="Win stage in current view"
           icon={Award}
           variant="cyan"
         />
         <MetricCard
-          label="Hot Prospect"
-          value={<span className={valueClass}>{formatValue(totalValueHotProspect)}</span>}
-          hint="Hot Prospect in current view, excluding Lose and On Hold"
+          label="Late Stage"
+          value={<span className={valueClass}>{formatValue(totalValueLateStage)}</span>}
+          hint="Open value in Technical Clarification, Commercial Negotiation, or LOA/PO Pending"
           icon={TrendingUp}
           variant="emerald"
         />

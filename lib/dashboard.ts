@@ -1,4 +1,4 @@
-import { isExcludedFromQuotedValue } from "@/lib/pipelineMetrics";
+import { isExcludedSalesStage, isLateSalesStage } from "@/lib/salesStage";
 import { pipelineDetailPath } from "@/lib/pipelinePaths";
 
 export type DashboardPipelineRow = {
@@ -10,9 +10,8 @@ export type DashboardPipelineRow = {
   customer_id: string;
   value: number | null;
   pipeline_type?: string | null;
-  progress_type: string;
-  outcome_status?: string | null;
-  prospect: string;
+  sales_stage: string;
+  sales_stage_changed_at?: string | null;
   status?: string | null;
   target_closing_at?: string | null;
   sales_id: string;
@@ -30,9 +29,7 @@ export type DashboardListPipeline = {
   pipeline_name: string;
   customer_name: string;
   value: number;
-  progress_type: string;
-  prospect: string;
-  outcome_status: string | null;
+  sales_stage: string;
   status: string;
   target_closing_at: string | null;
   created_at: string;
@@ -66,9 +63,7 @@ function toListItem(p: DashboardPipelineRow): DashboardListPipeline {
     pipeline_name: p.pipeline_name,
     customer_name: customerName(p),
     value: Number(p.value ?? 0),
-    progress_type: p.progress_type,
-    prospect: p.prospect,
-    outcome_status: p.outcome_status ?? null,
+    sales_stage: p.sales_stage,
     status: p.status ?? "Open",
     target_closing_at: p.target_closing_at ?? null,
     created_at: p.created_at,
@@ -87,7 +82,7 @@ export function isOpenProject(p: DashboardPipelineRow) {
 
 /** Active pipeline: Open, not Lose / On Hold */
 export function isActivePipeline(p: DashboardPipelineRow) {
-  return isOpenProject(p) && !isExcludedFromQuotedValue(p.outcome_status);
+  return isOpenProject(p) && !isExcludedSalesStage(p.sales_stage);
 }
 
 export function calcDashboardKpis(
@@ -97,7 +92,7 @@ export function calcDashboardKpis(
   const activePipelines = projects.filter(isActivePipeline);
   const totalPipelineValue = activePipelines.reduce((s, p) => s + Number(p.value ?? 0), 0);
 
-  const wonPipelines = projects.filter((p) => p.outcome_status === "Win");
+  const wonPipelines = projects.filter((p) => p.sales_stage === "Win");
   const totalWon = wonPipelines.reduce((s, p) => s + Number(p.value ?? 0), 0);
 
   const year = new Date().getFullYear();
@@ -107,14 +102,14 @@ export function calcDashboardKpis(
   // Fallback to all-time Win if no wins recorded this year yet (legacy data)
   const closingForTarget = totalWonYtd > 0 ? totalWonYtd : totalWon;
 
-  const hotProspectValue = projects
-    .filter((p) => p.prospect === "Hot Prospect" && !isExcludedFromQuotedValue(p.outcome_status))
+  const lateStageValue = projects
+    .filter((p) => isOpenProject(p) && isLateSalesStage(p.sales_stage))
     .reduce((s, p) => s + Number(p.value ?? 0), 0);
 
   const totalProposals = projects.length;
   const totalProjectWinCount = wonPipelines.length;
   const tenderOnProgress = projects.filter(
-    (p) => p.progress_type === "Tender" && (p.status ?? "Open") === "Open"
+    (p) => p.sales_stage === "Tender/RFQ" && (p.status ?? "Open") === "Open"
   ).length;
 
   const target = annualSalesTarget != null && annualSalesTarget > 0 ? annualSalesTarget : null;
@@ -124,7 +119,7 @@ export function calcDashboardKpis(
   return {
     totalPipelineValue,
     totalWon,
-    hotProspectValue,
+    lateStageValue,
     closingForTarget,
     annualSalesTarget: target,
     targetAchievementPct,
@@ -188,14 +183,28 @@ export function buildYearlyMonthlyWinsSeries(
   projects: DashboardPipelineRow[],
   year: number = new Date().getFullYear()
 ): MonthlyWinPoint[] {
+  const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const MONTH_LONG = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
   const buckets: MonthlyWinPoint[] = [];
   for (let month = 0; month < 12; month++) {
-    const d = new Date(year, month, 1);
     const key = `${year}-${String(month + 1).padStart(2, "0")}`;
     buckets.push({
       key,
-      label: d.toLocaleString("en-US", { month: "short" }),
-      fullLabel: d.toLocaleString("en-US", { month: "long" }),
+      label: MONTH_SHORT[month],
+      fullLabel: MONTH_LONG[month],
       wins: 0,
       value: 0,
     });
@@ -204,7 +213,7 @@ export function buildYearlyMonthlyWinsSeries(
   const bucketMap = new Map(buckets.map((b) => [b.key, b]));
 
   for (const p of projects) {
-    if (p.outcome_status !== "Win") continue;
+    if (p.sales_stage !== "Win") continue;
     const created = new Date(p.created_at);
     if (created.getFullYear() !== year) continue;
     const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
@@ -237,22 +246,22 @@ export function isNearOverdue(p: DashboardPipelineRow) {
   return p.target_closing_at >= today && p.target_closing_at <= end;
 }
 
-/** Hot Prospect / Near Overdue / Tender — Open pipelines needing attention */
+/** Late stage / Near Overdue / Tender — Open pipelines needing attention */
 export function getHotAttentionProjects(projects: DashboardPipelineRow[]): DashboardListPipeline[] {
   return projects
     .filter((p) => {
       if (!isOpenProject(p)) return false;
-      if (isExcludedFromQuotedValue(p.outcome_status)) return false;
+      if (isExcludedSalesStage(p.sales_stage)) return false;
       return (
-        p.prospect === "Hot Prospect" ||
-        p.progress_type === "Tender" ||
+        isLateSalesStage(p.sales_stage) ||
+        p.sales_stage === "Tender/RFQ" ||
         isNearOverdue(p)
       );
     })
     .sort((a, b) => {
-      const aHot = a.prospect === "Hot Prospect" ? 0 : 1;
-      const bHot = b.prospect === "Hot Prospect" ? 0 : 1;
-      if (aHot !== bHot) return aHot - bHot;
+      const aLate = isLateSalesStage(a.sales_stage) ? 0 : 1;
+      const bLate = isLateSalesStage(b.sales_stage) ? 0 : 1;
+      if (aLate !== bLate) return aLate - bLate;
       return (a.target_closing_at ?? "9999").localeCompare(b.target_closing_at ?? "9999");
     })
     .map(toListItem);

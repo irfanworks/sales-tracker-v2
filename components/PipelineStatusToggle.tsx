@@ -1,72 +1,73 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import type { LifecycleStatus } from "@/lib/types/database";
-import { logSalesActivity } from "@/lib/salesActivity";
+import { isSalesStage, isTerminalWinLose } from "@/lib/salesStage";
+import { setPipelineLifecycleAction } from "@/app/dashboard/pipeline/actions";
+import { StageReasonDialog } from "@/components/StageReasonDialog";
 
 export function PipelineStatusToggle({
   projectId,
   status,
+  salesStage,
   pipelineLabel,
 }: {
   projectId: string;
   status: LifecycleStatus;
+  salesStage?: string | null;
   pipelineLabel?: string;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Optimistic override; null = follow server-provided status
   const [optimisticOverride, setOptimisticOverride] = useState<LifecycleStatus | null>(null);
+  const [reopenOpen, setReopenOpen] = useState(false);
 
   const optimisticStatus = optimisticOverride ?? status;
   const isOpen = optimisticStatus === "Open";
   const nextStatus: LifecycleStatus = isOpen ? "Closed" : "Open";
+  const stage = isSalesStage(salesStage) ? salesStage : null;
 
-  async function handleToggle() {
-    const confirmed = window.confirm(
-      isOpen
-        ? "Mark this pipeline as Closed?\n\nClosed means the pipeline is finished and no longer being pursued."
-        : "Reopen this pipeline?\n\nOpen means the pipeline is still being actively worked on."
-    );
-    if (!confirmed) return;
-
-    setError(null);
+  async function apply(reason: string | null) {
     setSaving(true);
     setOptimisticOverride(nextStatus);
 
-    const supabase = createClient();
-    const { error: updateError } = await supabase
-      .from("pipelines")
-      .update({ status: nextStatus })
-      .eq("id", projectId);
+    const result = await setPipelineLifecycleAction({
+      id: projectId,
+      status: nextStatus,
+      reason,
+      pipelineLabel: pipelineLabel ?? null,
+    });
 
     setSaving(false);
-    if (updateError) {
+    if (!result.ok) {
       setOptimisticOverride(null);
-      setError(updateError.message);
+      setError(result.error);
       return;
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      await logSalesActivity(supabase, {
-        actorId: user.id,
-        actionType: "pipeline_status_changed",
-        entityType: "pipeline",
-        entityId: projectId,
-        entityLabel: pipelineLabel ?? null,
-        summary: `Marked pipeline${pipelineLabel ? ` ${pipelineLabel}` : ""} as ${nextStatus}`,
-        details: `Status changed from ${optimisticStatus} to ${nextStatus}`,
-      });
+    router.refresh();
+  }
+
+  async function handleToggle() {
+    setError(null);
+
+    if (isOpen) {
+      if (stage != null && !isTerminalWinLose(stage)) {
+        setError("Set stage to Win or Lose first");
+        return;
+      }
+      const confirmed = window.confirm(
+        "Mark this pipeline as Closed?\n\nClosed means the deal is decided (Win or Lose) and no longer being pursued."
+      );
+      if (!confirmed) return;
+      await apply(null);
+      return;
     }
 
-    router.refresh();
+    setReopenOpen(true);
   }
 
   return (
@@ -77,8 +78,8 @@ export function PipelineStatusToggle({
         disabled={saving}
         title={
           isOpen
-            ? "Click to mark Closed (requires confirmation)"
-            : "Click to mark Open (requires confirmation)"
+            ? "Click to mark Closed (only allowed on Win / Lose)"
+            : "Click to reopen (a reason is required)"
         }
         aria-pressed={!isOpen}
         aria-label={`Status: ${optimisticStatus}. Toggle to ${nextStatus}`}
@@ -118,7 +119,21 @@ export function PipelineStatusToggle({
           )}
         </span>
       </button>
-      {error && <span className="max-w-[7rem] text-[10px] text-red-600">{error}</span>}
+      {error && <span className="max-w-[9rem] text-[10px] text-red-600">{error}</span>}
+      <StageReasonDialog
+        open={reopenOpen}
+        mode="reopen"
+        stageLabel={pipelineLabel}
+        busy={saving}
+        onCancel={() => {
+          if (!saving) setReopenOpen(false);
+        }}
+        onConfirm={(payload) => {
+          if (payload.kind !== "reopen") return;
+          setReopenOpen(false);
+          void apply(payload.reason);
+        }}
+      />
     </div>
   );
 }

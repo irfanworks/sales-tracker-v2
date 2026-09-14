@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, UserPlus, Trash2 } from "lucide-react";
-import { SECTOR_OPTIONS } from "@/lib/types/database";
+import { CUSTOMER_ROLE_OPTIONS, SECTOR_OPTIONS } from "@/lib/types/database";
 import { createCustomerAction } from "@/app/dashboard/customers/actions";
 import {
   CustomerNameAutocomplete,
-  findExactCustomerMatch,
   type CustomerNameOption,
 } from "@/components/CustomerNameAutocomplete";
 
@@ -21,18 +20,18 @@ interface PicRow {
 const emptyPic = (): PicRow => ({ nama: "", email: "", no_hp: "", jabatan: "" });
 
 export function AddCustomerForm({
-  existingCustomers,
+  existingCustomers = [],
 }: {
-  existingCustomers: CustomerNameOption[];
+  existingCustomers?: CustomerNameOption[];
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [sector, setSector] = useState<string>("");
+  const [customerRole, setCustomerRole] = useState<string>("");
   const [pics, setPics] = useState<PicRow[]>([emptyPic()]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const duplicateMatch = findExactCustomerMatch(name, existingCustomers);
+  const [duplicateMatch, setDuplicateMatch] = useState<CustomerNameOption | null>(null);
 
   function addPic() {
     setPics((prev) => [...prev, emptyPic()]);
@@ -73,6 +72,7 @@ export function AddCustomerForm({
     const result = await createCustomerAction({
       name,
       sector: sector || null,
+      customer_role: customerRole || null,
       pics,
     });
     setLoading(false);
@@ -84,6 +84,7 @@ export function AddCustomerForm({
 
     setName("");
     setSector("");
+    setCustomerRole("");
     setPics([emptyPic()]);
     router.refresh();
   }
@@ -100,6 +101,7 @@ export function AddCustomerForm({
             onChange={setName}
             existingCustomers={existingCustomers}
             disabled={loading}
+            onExactMatchChange={setDuplicateMatch}
           />
           <p className="mt-1 text-xs text-slate-500">
             Type to search existing customers and avoid duplicates.
@@ -122,6 +124,27 @@ export function AddCustomerForm({
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <label htmlFor="customer-role" className="mb-1 block text-sm font-medium text-slate-700">
+            Customer role
+          </label>
+          <select
+            id="customer-role"
+            value={customerRole}
+            onChange={(e) => setCustomerRole(e.target.value)}
+            className="input-field"
+          >
+            <option value="">— Not set —</option>
+            {CUSTOMER_ROLE_OPTIONS.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            Optional. Use this later to analyze who most of Enercon’s customers are.
+          </p>
         </div>
       </div>
 

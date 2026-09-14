@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getAuthUser, getSupabase } from "@/lib/auth";
 import { slugWithId } from "@/lib/slugify";
+import { isCustomerRole } from "@/lib/types/database";
 
 export type CustomerActionResult =
   | { ok: true; id: string }
@@ -11,6 +12,7 @@ export type CustomerActionResult =
 export type CreateCustomerInput = {
   name: string;
   sector: string | null;
+  customer_role: string | null;
   pics: {
     nama: string;
     email: string;
@@ -29,6 +31,11 @@ export async function createCustomerAction(
 
   const name = input.name.trim();
   if (!name) return { ok: false, error: "Customer name is required." };
+
+  const role = input.customer_role?.trim() || null;
+  if (role && !isCustomerRole(role)) {
+    return { ok: false, error: "Invalid customer role." };
+  }
 
   const picsWithName = input.pics.filter((p) => p.nama.trim());
   if (picsWithName.length === 0) {
@@ -70,6 +77,7 @@ export async function createCustomerAction(
       id,
       name,
       sector: input.sector?.trim() || null,
+      customer_role: role,
       slug,
     })
     .select("id")

@@ -4,9 +4,7 @@ export const PIPELINES_PAGE_SIZE = 50;
 
 export type PipelineListParams = {
   q?: string;
-  progress_type?: string;
-  prospect?: string;
-  outcome_status?: string;
+  sales_stage?: string;
   sales_id?: string;
   sort_by?: string;
   sort_order?: string;
@@ -23,9 +21,9 @@ const PIPELINE_SELECT = `
   value,
   pipeline_type,
   status,
-  progress_type,
-  outcome_status,
-  prospect,
+  sales_stage,
+  sales_stage_changed_at,
+  source_prospect_id,
   target_closing_at,
   pic_name,
   sales_id,
@@ -113,9 +111,7 @@ export function buildPipelinesListQuery(
     options?.count ? { count: options.count } : undefined
   );
 
-  if (params.progress_type) query = query.eq("progress_type", params.progress_type);
-  if (params.prospect) query = query.eq("prospect", params.prospect);
-  if (params.outcome_status) query = query.eq("outcome_status", params.outcome_status);
+  if (params.sales_stage) query = query.eq("sales_stage", params.sales_stage);
   if (params.sales_id) query = query.eq("sales_id", params.sales_id);
 
   if (q) {
@@ -139,9 +135,7 @@ export function buildExportSearchParams(params: PipelineListParams) {
   const search = new URLSearchParams();
   const q = sanitizePipelineSearch(params.q);
   if (q) search.set("q", q);
-  if (params.progress_type) search.set("progress_type", params.progress_type);
-  if (params.prospect) search.set("prospect", params.prospect);
-  if (params.outcome_status) search.set("outcome_status", params.outcome_status);
+  if (params.sales_stage) search.set("sales_stage", params.sales_stage);
   if (params.sales_id) search.set("sales_id", params.sales_id);
   if (params.sort_by) search.set("sort_by", params.sort_by);
   if (params.sort_order) search.set("sort_order", params.sort_order);

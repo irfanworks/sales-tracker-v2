@@ -22,8 +22,11 @@ export default async function SalesActivityPage({
   searchParams: Promise<{ from?: string; to?: string; sales_id?: string }>;
 }) {
   const raw = await searchParams;
-  const user = await getAuthUser();
-  const profile = await getProfile();
+  const [user, profile, supabase] = await Promise.all([
+    getAuthUser(),
+    getProfile(),
+    getSupabase(),
+  ]);
   const isAdmin = profile?.role === "admin";
 
   const defaultFrom = daysAgoJakarta(13);
@@ -36,7 +39,6 @@ export default async function SalesActivityPage({
   const { startIso } = jakartaDayBoundsUtc(from);
   const { endIso } = jakartaDayBoundsUtc(to);
 
-  const supabase = await getSupabase();
   let query = supabase
     .from("sales_activity_log")
     .select(

@@ -22,31 +22,71 @@ export function findExactCustomerMatch(name: string, existingCustomers: Customer
   return existingCustomers.find((c) => normalizeName(c.name) === normalized) ?? null;
 }
 
+/**
+ * Create-customer name field with remote duplicate suggestions.
+ * `existingCustomers` is optional seed (usually empty — search hits the API).
+ */
 export function CustomerNameAutocomplete({
   value,
   onChange,
-  existingCustomers,
+  existingCustomers = [],
   disabled,
+  onExactMatchChange,
 }: {
   value: string;
   onChange: (value: string) => void;
-  existingCustomers: CustomerNameOption[];
+  existingCustomers?: CustomerNameOption[];
   disabled?: boolean;
+  onExactMatchChange?: (match: CustomerNameOption | null) => void;
 }) {
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [remote, setRemote] = useState<CustomerNameOption[]>([]);
 
   const normalizedInput = normalizeName(value);
+
+  useEffect(() => {
+    if (normalizedInput.length < 1) {
+      setRemote([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/customers/search?q=${encodeURIComponent(value.trim())}&limit=8`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) return;
+        const body = (await res.json()) as { customers?: CustomerNameOption[] };
+        setRemote(body.customers ?? []);
+      } catch {
+        /* ignore abort / network */
+      }
+    }, 220);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [value, normalizedInput]);
+
+  const merged = [...existingCustomers, ...remote].filter(
+    (c, i, arr) => arr.findIndex((x) => x.id === c.id) === i
+  );
   const suggestions =
     normalizedInput.length > 0
-      ? existingCustomers
-          .filter((c) => normalizeName(c.name).includes(normalizedInput))
-          .slice(0, 8)
+      ? merged.filter((c) => normalizeName(c.name).includes(normalizedInput)).slice(0, 8)
       : [];
 
-  const exactMatch = findExactCustomerMatch(value, existingCustomers);
+  const exactMatch = findExactCustomerMatch(value, merged);
+
+  useEffect(() => {
+    onExactMatchChange?.(exactMatch);
+    // Compare by id so parent state updates don't loop on object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- exactMatch object is unstable across merges
+  }, [exactMatch?.id ?? null, normalizedInput, onExactMatchChange]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -143,8 +183,8 @@ export function CustomerNameAutocomplete({
               className="font-medium text-cyan-800 underline hover:text-cyan-900"
             >
               View existing customer
-            </Link>
-            {" "}instead of creating a duplicate.
+            </Link>{" "}
+            instead of creating a duplicate.
           </p>
         </div>
       )}

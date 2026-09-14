@@ -5,6 +5,7 @@ import { ArrowLeft, Edit, Target } from "lucide-react";
 import { ProspectForm } from "@/components/ProspectForm";
 import { ProspectUpdatesSection } from "@/components/ProspectUpdatesSection";
 import { ProspectStatusBadge } from "@/components/ProspectStatusBadge";
+import { ConvertProspectButton } from "@/components/ConvertProspectButton";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getSupabase } from "@/lib/auth";
 import { customerDetailPath } from "@/lib/customerPaths";
@@ -50,6 +51,7 @@ export default async function ProspectDetailPage({
       pic_name,
       pic_salutation,
       status,
+      estimated_value,
       latest_update,
       sales_id,
       customers ( id, name, slug )
@@ -62,7 +64,9 @@ export default async function ProspectDetailPage({
     notFound();
   }
 
-  const [{ data: updates }, { data: profile }, { data: customers }] = await Promise.all([
+  const isEdit = edit === "true";
+
+  const [{ data: updates }, { data: profile }, picsResult] = await Promise.all([
     supabase
       .from("prospect_updates")
       .select("id, content, created_at, created_by")
@@ -73,10 +77,13 @@ export default async function ProspectDetailPage({
       .select("display_name, full_name")
       .eq("id", prospect.sales_id)
       .single(),
-    supabase
-      .from("customers")
-      .select("id, name, customer_pics ( id, nama )")
-      .order("name"),
+    isEdit
+      ? supabase
+          .from("customer_pics")
+          .select("id, nama")
+          .eq("customer_id", prospect.customer_id)
+          .order("nama")
+      : Promise.resolve({ data: null as null }),
   ]);
 
   const authorIds = [...new Set((updates ?? []).map((u) => u.created_by).filter(Boolean))] as string[];
@@ -91,20 +98,16 @@ export default async function ProspectDetailPage({
     });
   }
 
-  const isEdit = edit === "true";
   const customer = Array.isArray(prospect.customers) ? prospect.customers[0] : prospect.customers;
   const salesName = profile?.display_name ?? profile?.full_name ?? "—";
-  const customersNormalized = (customers ?? []).map((c) => ({
-    id: c.id,
-    name: c.name,
-    pics: Array.isArray(c.customer_pics)
-      ? c.customer_pics.map((p: { id: string; nama: string | null }) => ({
-          id: p.id,
-          nama: p.nama,
-        }))
-      : [],
-  }));
-
+  const seedCustomer =
+    isEdit && customer
+      ? {
+          id: prospect.customer_id as string,
+          name: (customer as { name?: string })?.name ?? "",
+          pics: (picsResult.data ?? []).map((p) => ({ id: p.id, nama: p.nama })),
+        }
+      : null;
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -118,13 +121,20 @@ export default async function ProspectDetailPage({
             Edit
           </Link>
         )}
+        {!isEdit && prospect.status !== "Converted" && (
+          <ConvertProspectButton
+            prospectId={prospect.id}
+            prospectTitle={prospect.title}
+            hasEstimatedValue={prospect.estimated_value != null}
+          />
+        )}
       </div>
 
       {isEdit ? (
         <div className="card-elevated p-5 sm:p-6">
           <h1 className="mb-6 text-xl font-bold text-slate-900">Edit Prospect</h1>
           <ProspectForm
-            customers={customersNormalized}
+            seedCustomer={seedCustomer}
             backPath={`/dashboard/prospects/${id}`}
             prospect={{
               id: prospect.id,
@@ -134,6 +144,8 @@ export default async function ProspectDetailPage({
               pic_name: prospect.pic_name,
               pic_salutation: prospect.pic_salutation,
               status: prospect.status as ProspectStatus,
+              estimated_value:
+                prospect.estimated_value != null ? Number(prospect.estimated_value) : null,
             }}
           />
         </div>
@@ -177,6 +189,20 @@ export default async function ProspectDetailPage({
                 Sales
               </p>
               <p className="mt-1 font-medium text-slate-800">{salesName}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Estimated value
+              </p>
+              <p className="mt-1 font-medium tabular-nums text-slate-800">
+                {prospect.estimated_value != null
+                  ? new Intl.NumberFormat("id-ID", {
+                      style: "currency",
+                      currency: "IDR",
+                      minimumFractionDigits: 0,
+                    }).format(Number(prospect.estimated_value))
+                  : "—"}
+              </p>
             </div>
             <div className="sm:col-span-2">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">

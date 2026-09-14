@@ -7,11 +7,13 @@
     "dev:clean": "rm -rf .next && next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/google": "^1.2.22",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.47.10",
+    "ai": "^4.3.19",
     "date-fns": "^4.1.0",
     "docxtemplater": "^3.69.3",
     "lucide-react": "^0.460.0",
@@ -19,6 +21,9 @@
     "pizzip": "^3.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "server-only": "^0.0.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

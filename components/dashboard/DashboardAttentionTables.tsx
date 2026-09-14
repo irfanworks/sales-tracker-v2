@@ -245,10 +245,10 @@ export function DashboardAttentionTables({
   return (
     <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
       <AttentionPanel
-        title="Hot Prospect Project"
+        title="Late Stage Pipeline"
         topProjects={hotAttention.slice(0, 5)}
         allProjects={hotAttention}
-        emptyLabel="No hot prospect / tender pipelines right now."
+        emptyLabel="No late stage / tender pipelines right now."
         highlightOverdue={false}
         valueColumn
       />

@@ -12,24 +12,28 @@ import {
   isPicSalutation,
 } from "@/lib/types/database";
 import { clipText, logSalesActivity } from "@/lib/salesActivity";
+import {
+  formatNumberAsThousands,
+  formatThousandsInput,
+  parseThousandsInput,
+} from "@/lib/formatThousands";
+import { CustomerSelectAutocomplete } from "@/components/CustomerSelectAutocomplete";
 
 interface CustomerPicOption {
   id: string;
   nama: string | null;
 }
 
-type CustomerOption = {
-  id: string;
-  name: string;
-  pics?: CustomerPicOption[];
-};
-
 export function ProspectForm({
-  customers,
+  seedCustomer,
   prospect,
   backPath = "/dashboard/prospects",
 }: {
-  customers: CustomerOption[];
+  seedCustomer?: {
+    id: string;
+    name: string;
+    pics?: CustomerPicOption[];
+  } | null;
   prospect?: {
     id: string;
     customer_id: string;
@@ -38,12 +42,14 @@ export function ProspectForm({
     pic_name?: string | null;
     pic_salutation?: PicSalutation | null;
     status: ProspectStatus;
+    estimated_value?: number | null;
   };
   backPath?: string;
 }) {
   const router = useRouter();
   const isEdit = Boolean(prospect);
-  const [customerId, setCustomerId] = useState(prospect?.customer_id ?? "");
+  const [customerId, setCustomerId] = useState(prospect?.customer_id ?? seedCustomer?.id ?? "");
+  const [customerName, setCustomerName] = useState(seedCustomer?.name ?? "");
   const [picName, setPicName] = useState(prospect?.pic_name ?? "");
   const [picSalutation, setPicSalutation] = useState<PicSalutation | "">(
     isPicSalutation(prospect?.pic_salutation) ? prospect.pic_salutation : ""
@@ -51,24 +57,21 @@ export function ProspectForm({
   const [title, setTitle] = useState(prospect?.title ?? "");
   const [workDescription, setWorkDescription] = useState(prospect?.work_description ?? "");
   const [status, setStatus] = useState<ProspectStatus>(prospect?.status ?? "Open");
+  const [estimatedValue, setEstimatedValue] = useState(
+    formatNumberAsThousands(prospect?.estimated_value ?? null)
+  );
   const [initialUpdate, setInitialUpdate] = useState("");
-  const [fetchedPics, setFetchedPics] = useState<CustomerPicOption[] | null>(null);
+  const [fetchedPics, setFetchedPics] = useState<CustomerPicOption[] | null>(
+    seedCustomer?.pics ?? null
+  );
   const [loadingPics, setLoadingPics] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const selectedCustomer = useMemo(
-    () => customers.find((c) => c.id === customerId) ?? null,
-    [customers, customerId]
+  const picOptions = useMemo(
+    () => (fetchedPics ?? []).filter((p) => p.nama?.trim()),
+    [fetchedPics]
   );
-
-  const picOptions = useMemo(() => {
-    const fromCustomer = selectedCustomer?.pics;
-    if (fromCustomer && fromCustomer.length > 0) {
-      return fromCustomer.filter((p) => p.nama?.trim());
-    }
-    return (fetchedPics ?? []).filter((p) => p.nama?.trim());
-  }, [selectedCustomer, fetchedPics]);
 
   useEffect(() => {
     if (!customerId) {
@@ -76,9 +79,8 @@ export function ProspectForm({
       return;
     }
 
-    const fromProps = customers.find((c) => c.id === customerId)?.pics;
-    if (fromProps) {
-      setFetchedPics(null);
+    if (seedCustomer?.id === customerId && seedCustomer.pics) {
+      setFetchedPics(seedCustomer.pics);
       return;
     }
 
@@ -100,11 +102,12 @@ export function ProspectForm({
     return () => {
       cancelled = true;
     };
-  }, [customerId, customers]);
+  }, [customerId, seedCustomer]);
 
-  function handleCustomerChange(nextId: string) {
-    setCustomerId(nextId);
-    if (nextId === prospect?.customer_id) {
+  function handleCustomerChange(next: { id: string; name: string } | null) {
+    setCustomerId(next?.id ?? "");
+    setCustomerName(next?.name ?? "");
+    if (next?.id === prospect?.customer_id) {
       setPicName(prospect?.pic_name ?? "");
       setPicSalutation(isPicSalutation(prospect?.pic_salutation) ? prospect.pic_salutation : "");
     } else {
@@ -146,14 +149,15 @@ export function ProspectForm({
       return;
     }
 
-    const customerName = selectedCustomer?.name ?? "customer";
+    const resolvedCustomerName = customerName.trim() || "customer";
+    const estimatedValueNum = parseThousandsInput(estimatedValue);
     const trimmedTitle = title.trim();
     const trimmedPic = picName.trim();
     const picLabel = formatPicWithSalutation(picSalutation, trimmedPic);
 
     if (prospect) {
       const changes: string[] = [];
-      if (prospect.customer_id !== customerId) changes.push(`Customer → ${customerName}`);
+      if (prospect.customer_id !== customerId) changes.push(`Customer → ${resolvedCustomerName}`);
       const prevPic = formatPicWithSalutation(prospect.pic_salutation, prospect.pic_name);
       if (prevPic !== picLabel) changes.push(`PIC → ${picLabel}`);
       if (prospect.title !== trimmedTitle) changes.push(`Title → ${trimmedTitle}`);
@@ -161,6 +165,11 @@ export function ProspectForm({
         changes.push("Work description updated");
       }
       if (prospect.status !== status) changes.push(`Status → ${status}`);
+      if ((prospect.estimated_value ?? null) !== (estimatedValueNum ?? null)) {
+        changes.push(
+          `Estimated value → ${estimatedValueNum != null ? formatNumberAsThousands(estimatedValueNum) : "cleared"}`
+        );
+      }
 
       // No-op save: leave quietly — do not clutter Sales Activity
       if (changes.length === 0) {
@@ -179,6 +188,7 @@ export function ProspectForm({
           pic_name: trimmedPic,
           pic_salutation: picSalutation,
           status,
+          estimated_value: estimatedValueNum,
         })
         .eq("id", prospect.id);
 
@@ -194,7 +204,7 @@ export function ProspectForm({
         entityType: "prospect",
         entityId: prospect.id,
         entityLabel: trimmedTitle,
-        summary: `Edited prospect “${trimmedTitle}” (${customerName})`,
+        summary: `Edited prospect “${trimmedTitle}” (${resolvedCustomerName})`,
         details: changes.join(" · "),
       });
 
@@ -213,6 +223,7 @@ export function ProspectForm({
         pic_name: trimmedPic,
         pic_salutation: picSalutation,
         status: "Open",
+        estimated_value: estimatedValueNum,
         sales_id: user.id,
         latest_update: trimmedUpdate || null,
       })
@@ -239,7 +250,7 @@ export function ProspectForm({
       entityType: "prospect",
       entityId: created.id,
       entityLabel: trimmedTitle,
-      summary: `Created prospect “${trimmedTitle}” for ${customerName} (PIC: ${picLabel})`,
+      summary: `Created prospect “${trimmedTitle}” for ${resolvedCustomerName} (PIC: ${picLabel})`,
       details: trimmedUpdate ? `Initial note: ${clipText(trimmedUpdate)}` : null,
     });
 
@@ -258,23 +269,16 @@ export function ProspectForm({
 
       <div className="form-grid">
         <div className="min-w-0">
-          <label htmlFor="prospect-customer" className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-slate-700">
             Customer
           </label>
-          <select
-            id="prospect-customer"
-            value={customerId}
-            onChange={(e) => handleCustomerChange(e.target.value)}
-            className="input-field"
+          <CustomerSelectAutocomplete
+            valueId={customerId}
+            valueLabel={customerName}
+            onSelect={handleCustomerChange}
             required
-          >
-            <option value="">Select customer…</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            placeholder="Search customer by name…"
+          />
         </div>
         <div className="min-w-0">
           <label htmlFor="prospect-pic" className="mb-1 block text-sm font-medium text-slate-700">
@@ -346,6 +350,32 @@ export function ProspectForm({
           required
         />
         <p className="mt-1 text-xs text-slate-500">Short label for the opportunity before it becomes a quote.</p>
+      </div>
+
+      <div>
+        <label
+          htmlFor="prospect-estimated-value"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
+          Estimated value
+          <span className="ml-1 font-normal text-slate-500">(optional)</span>
+        </label>
+        <div className="pipeline-currency-wrap">
+          <span className="pipeline-currency-affix">Rp</span>
+          <input
+            id="prospect-estimated-value"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={estimatedValue}
+            onChange={(e) => setEstimatedValue(formatThousandsInput(e.target.value))}
+            className="input-field tabular-nums"
+            placeholder="e.g. 1,500,000,000"
+          />
+        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          Carried over as the pipeline value when this prospect is converted.
+        </p>
       </div>
 
       <div>

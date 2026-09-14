@@ -2,20 +2,14 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  OUTCOME_STATUSES,
-  PROGRESS_TYPES,
-  PROSPECT_OPTIONS,
-} from "@/lib/types/database";
+import { SALES_STAGES } from "@/lib/salesStage";
 import {
   ArrowDownWideNarrow,
   ArrowUpDown,
   ChevronDown,
   Filter,
-  Flame,
   ListFilter,
   Search,
-  Trophy,
   UserRound,
   X,
 } from "lucide-react";
@@ -48,33 +42,30 @@ function FilterTile({
 
 export function PipelinesFilters({
   q,
-  progressType,
-  prospect,
-  outcomeStatus,
+  salesStage,
   salesId,
   sortBy,
   sortOrder,
   salesOptions,
   showSalesFilter = true,
-  showProgressFilter = true,
-  progressTypeOptions = PROGRESS_TYPES,
+  showStageFilter = true,
+  salesStageOptions = SALES_STAGES,
   basePath = "/dashboard",
 }: {
   q?: string;
-  progressType?: string;
-  prospect?: string;
-  outcomeStatus?: string;
+  salesStage?: string;
   salesId?: string;
   sortBy?: string;
   sortOrder?: string;
   salesOptions: SalesOption[];
   showSalesFilter?: boolean;
-  showProgressFilter?: boolean;
-  progressTypeOptions?: readonly string[];
+  showStageFilter?: boolean;
+  salesStageOptions?: readonly string[];
   basePath?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const searchKey = searchParams.toString();
   const [expanded, setExpanded] = useState(false);
   const [searchDraft, setSearchDraft] = useState(q ?? "");
 
@@ -88,16 +79,19 @@ export function PipelinesFilters({
     if (trimmed === current) return;
 
     const handle = window.setTimeout(() => {
-      const next = new URLSearchParams(searchParams.toString());
+      const next = new URLSearchParams(searchKey);
       if (trimmed) next.set("q", trimmed);
       else next.delete("q");
       next.delete("page");
       const qs = next.toString();
-      router.push(qs ? `${basePath}?${qs}` : basePath);
-    }, 350);
+      const href = qs ? `${basePath}?${qs}` : basePath;
+      const here = searchKey ? `${basePath}?${searchKey}` : basePath;
+      if (href === here) return;
+      router.push(href);
+    }, 400);
 
     return () => window.clearTimeout(handle);
-  }, [searchDraft, q, searchParams, router, basePath]);
+  }, [searchDraft, q, searchKey, router, basePath]);
 
   function updateFilter(key: string, value: string) {
     const next = new URLSearchParams(searchParams.toString());
@@ -114,11 +108,9 @@ export function PipelinesFilters({
 
   const chips: { key: string; label: string; value: string }[] = [];
   if (q?.trim()) chips.push({ key: "q", label: "Search", value: q.trim() });
-  if (showProgressFilter && progressType) {
-    chips.push({ key: "progress_type", label: "Progress", value: progressType });
+  if (showStageFilter && salesStage) {
+    chips.push({ key: "sales_stage", label: "Stage", value: salesStage });
   }
-  if (prospect) chips.push({ key: "prospect", label: "Prospect", value: prospect });
-  if (outcomeStatus) chips.push({ key: "outcome_status", label: "Outcome", value: outcomeStatus });
   if (showSalesFilter && salesId && salesLabel) {
     chips.push({ key: "sales_id", label: "Sales", value: salesLabel });
   }
@@ -244,15 +236,15 @@ export function PipelinesFilters({
         <div>
           <p className="filter-section-label">Refine</p>
           <div className="filter-tiles">
-            {showProgressFilter && (
-              <FilterTile label="Progress" icon={ListFilter}>
+            {showStageFilter && (
+              <FilterTile label="Sales stage" icon={ListFilter}>
                 <select
-                  value={progressType ?? ""}
-                  onChange={(e) => updateFilter("progress_type", e.target.value)}
+                  value={salesStage ?? ""}
+                  onChange={(e) => updateFilter("sales_stage", e.target.value)}
                   className="filter-tile__select"
                 >
-                  <option value="">All progress</option>
-                  {progressTypeOptions.map((t) => (
+                  <option value="">All stages</option>
+                  {salesStageOptions.map((t) => (
                     <option key={t} value={t}>
                       {t}
                     </option>
@@ -260,36 +252,6 @@ export function PipelinesFilters({
                 </select>
               </FilterTile>
             )}
-
-            <FilterTile label="Prospect heat" icon={Flame}>
-              <select
-                value={prospect ?? ""}
-                onChange={(e) => updateFilter("prospect", e.target.value)}
-                className="filter-tile__select"
-              >
-                <option value="">All heats</option>
-                {PROSPECT_OPTIONS.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </FilterTile>
-
-            <FilterTile label="Outcome" icon={Trophy}>
-              <select
-                value={outcomeStatus ?? ""}
-                onChange={(e) => updateFilter("outcome_status", e.target.value)}
-                className="filter-tile__select"
-              >
-                <option value="">All outcomes</option>
-                {OUTCOME_STATUSES.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            </FilterTile>
 
             {showSalesFilter && (
               <FilterTile label="Sales owner" icon={UserRound}>

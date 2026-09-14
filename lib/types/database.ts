@@ -1,3 +1,5 @@
+import type { SalesStage } from "@/lib/salesStage";
+
 export type UserRole = "admin" | "sales";
 
 export interface Profile {
@@ -18,6 +20,20 @@ export const SECTOR_OPTIONS = [
   "Mining",
 ] as const;
 export type SectorOption = (typeof SECTOR_OPTIONS)[number];
+
+/** Who this company is to Enercon — optional until sales categorizes. */
+export const CUSTOMER_ROLE_OPTIONS = [
+  "End User/Owner",
+  "EPC/Main Contractor",
+  "Partner",
+  "Principal",
+  "Direct Quotation Customer",
+] as const;
+export type CustomerRole = (typeof CUSTOMER_ROLE_OPTIONS)[number];
+
+export function isCustomerRole(value: string | null | undefined): value is CustomerRole {
+  return CUSTOMER_ROLE_OPTIONS.includes(value as CustomerRole);
+}
 
 export interface CustomerPic {
   id?: string;
@@ -51,27 +67,23 @@ export interface Customer {
   id: string;
   name: string;
   sector?: SectorOption | null;
+  customer_role?: CustomerRole | null;
   slug?: string | null;
   created_at?: string;
   pics?: CustomerPic[];
 }
 
-/** Progress type at pipeline creation / lifecycle stage */
-export const PROGRESS_TYPES = ["Budgetary", "Tender"] as const;
 export const PIPELINE_TYPES = ["Project", "Trading", "Service"] as const;
-export const OUTCOME_STATUSES = ["Win", "Lose", "On Hold"] as const;
-/** Heat on a pipeline (Hot vs Normal) — not the Prospects module */
-export const PROSPECT_OPTIONS = ["Hot Prospect", "Normal"] as const;
 export const LIFECYCLE_STATUSES = ["Open", "Closed"] as const;
 /** Pre-quote opportunity statuses */
 export const PROSPECT_STATUSES = ["Open", "Closed", "Converted"] as const;
 
-export type ProgressType = (typeof PROGRESS_TYPES)[number];
 export type PipelineType = (typeof PIPELINE_TYPES)[number];
-export type OutcomeStatus = (typeof OUTCOME_STATUSES)[number];
-export type ProspectOption = (typeof PROSPECT_OPTIONS)[number];
 export type LifecycleStatus = (typeof LIFECYCLE_STATUSES)[number];
 export type ProspectStatus = (typeof PROSPECT_STATUSES)[number];
+
+export { SALES_STAGES } from "@/lib/salesStage";
+export type { SalesStage } from "@/lib/salesStage";
 
 export interface PipelineUpdate {
   id?: string;
@@ -116,9 +128,9 @@ export interface Pipeline {
   value: number;
   pipeline_type: PipelineType;
   status: LifecycleStatus;
-  progress_type: ProgressType;
-  outcome_status?: OutcomeStatus | null;
-  prospect: ProspectOption;
+  sales_stage: SalesStage;
+  sales_stage_changed_at?: string | null;
+  source_prospect_id?: string | null;
   pic_name?: string | null;
   pic_salutation?: PicSalutation | null;
   weekly_update: string | null;
@@ -140,8 +152,9 @@ export interface PipelineInsert {
   customer_id: string;
   value: number;
   pipeline_type: PipelineType;
-  progress_type: ProgressType;
-  prospect: ProspectOption;
+  sales_stage: SalesStage;
+  sales_stage_changed_at?: string | null;
+  source_prospect_id?: string | null;
   status?: LifecycleStatus;
   weekly_update?: string | null;
   target_closing_at?: string | null;
@@ -168,6 +181,7 @@ export interface Prospect {
   pic_name?: string | null;
   pic_salutation?: PicSalutation | null;
   status: ProspectStatus;
+  estimated_value?: number | null;
   sales_id: string;
   latest_update: string | null;
   customer?: Customer;
@@ -182,6 +196,7 @@ export interface ProspectInsert {
   pic_name?: string | null;
   pic_salutation?: PicSalutation | null;
   status?: ProspectStatus;
+  estimated_value?: number | null;
   latest_update?: string | null;
 }
 
@@ -190,12 +205,14 @@ export type SalesActivityActionType =
   | "pipeline_updated"
   | "pipeline_deleted"
   | "pipeline_status_changed"
+  | "pipeline_stage_changed"
   | "pipeline_update_added"
   | "quote_revised"
   | "prospect_created"
   | "prospect_updated"
   | "prospect_deleted"
-  | "prospect_update_added";
+  | "prospect_update_added"
+  | "prospect_converted";
 
 export interface SalesActivityLog {
   id: string;

@@ -1,5 +1,21 @@
+import "server-only";
 import * as XLSX from "xlsx";
-import type { ProjectExportRow } from "@/lib/exportExcel";
+
+export type ProjectExportRow = {
+  no_quote: string;
+  pipeline_name: string;
+  customer_name: string;
+  pic_name?: string | null;
+  value: number;
+  pipeline_type?: string | null;
+  sales_stage: string;
+  sales_stage_changed_at?: string | null;
+  sales_name: string;
+  date: string;
+  target_closing_at?: string | null;
+  status?: string | null;
+  updates?: Array<{ content: string; created_at: string }>;
+};
 
 export function buildPipelinesWorkbook(rows: ProjectExportRow[]) {
   const data = rows.map((p) => {
@@ -20,9 +36,10 @@ export function buildPipelinesWorkbook(rows: ProjectExportRow[]) {
       PIC: p.pic_name ?? "",
       Value: p.value,
       Type: p.pipeline_type ?? "Project",
-      "Progress Type": p.progress_type,
-      Outcome: p.outcome_status ?? "",
-      Prospect: p.prospect,
+      "Sales Stage": p.sales_stage,
+      "Stage Changed": p.sales_stage_changed_at
+        ? new Date(p.sales_stage_changed_at).toLocaleDateString("en-GB")
+        : "",
       Sales: p.sales_name,
       Date: p.date,
       "Target Closing": p.target_closing_at ?? "",
@@ -30,7 +47,6 @@ export function buildPipelinesWorkbook(rows: ProjectExportRow[]) {
       "All Updates": updatesText,
     };
   });
-
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Pipeline");
@@ -41,7 +57,6 @@ export function buildPipelinesWorkbook(rows: ProjectExportRow[]) {
     "Update Date": string;
     Content: string;
   }> = [];
-
   rows.forEach((p) => {
     (p.updates ?? []).forEach((u) => {
       updateRows.push({
@@ -55,7 +70,6 @@ export function buildPipelinesWorkbook(rows: ProjectExportRow[]) {
       });
     });
   });
-
   if (updateRows.length > 0) {
     const wsUpdates = XLSX.utils.json_to_sheet(updateRows);
     XLSX.utils.book_append_sheet(wb, wsUpdates, "Project Updates");

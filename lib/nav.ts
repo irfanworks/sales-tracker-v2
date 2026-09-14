@@ -23,6 +23,8 @@ export function isNavActive(pathname: string, href: string): boolean {
 /** Routes that belong under the More sheet (not a primary tab). */
 export const mobileMoreRoutes = [
   "/dashboard/sales-activity",
+  "/dashboard/ai-analytics",
+  "/dashboard/lost-analysis",
   "/dashboard/pipeline/new",
   "/dashboard/prospects/new",
   "/dashboard/settings",

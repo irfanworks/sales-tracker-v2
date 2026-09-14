@@ -1,9 +1,15 @@
 "use client";
 
-import { OverdueOutcomeModal } from "@/components/OverdueOutcomeModal";
+import dynamic from "next/dynamic";
 import type { OverdueOutcomePipeline } from "@/lib/overdueOutcome";
 
-/** Keep modal out of the critical server HTML when there is nothing overdue. */
+const OverdueOutcomeModal = dynamic(
+  () =>
+    import("@/components/OverdueOutcomeModal").then((m) => m.OverdueOutcomeModal),
+  { ssr: false }
+);
+
+/** Code-split the overdue modal — only load when there is something to show. */
 export function LazyOverdueOutcomeModal({
   count,
   items,

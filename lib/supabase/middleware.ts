@@ -49,10 +49,43 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Always refresh session so Server Actions / browser stay in sync
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const path = request.nextUrl.pathname;
+
+  // Gate dashboard + API at the edge (defense in depth; layouts/routes still check)
+  if (!user && path.startsWith("/dashboard")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", path);
+    const redirect = NextResponse.redirect(url);
+    Object.entries(NO_STORE_HEADERS).forEach(([key, value]) => {
+      redirect.headers.set(key, value);
+    });
+    return redirect;
+  }
+
+  if (!user && path.startsWith("/api/")) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: NO_STORE_HEADERS }
+    );
+  }
+
+  if (user && path === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    url.search = "";
+    const redirect = NextResponse.redirect(url);
+    Object.entries(NO_STORE_HEADERS).forEach(([key, value]) => {
+      redirect.headers.set(key, value);
+    });
+    return redirect;
+  }
 
   // Dashboard + login must never be CDN/browser-cached with stale auth cookies
-  const path = request.nextUrl.pathname;
   if (
     path.startsWith("/dashboard") ||
     path === "/login" ||

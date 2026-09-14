@@ -30,6 +30,10 @@ const nextConfig = {
     ];
   },
   async headers() {
+    const connectSrc = isProduction
+      ? "connect-src 'self' https://*.supabase.co wss://*.supabase.co"
+      : "connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:* https://*.supabase.co wss://*.supabase.co";
+
     const securityHeaders = [
       { key: "X-Frame-Options", value: "DENY" },
       { key: "X-Content-Type-Options", value: "nosniff" },
@@ -47,7 +51,7 @@ const nextConfig = {
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: https: blob:",
           "font-src 'self' data:",
-          "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+          connectSrc,
           "frame-ancestors 'none'",
           "base-uri 'self'",
           "form-action 'self'",

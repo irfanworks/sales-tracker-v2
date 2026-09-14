@@ -17,6 +17,8 @@ export type QuotationTemplateFields = {
   pic_full: string;
   pipeline_name: string;
   pipeline_type: string;
+  sales_stage: string;
+  /** Legacy DOCX placeholder — same text as sales_stage */
   progress_type: string;
   value_idr: string;
   price_validity_days: string;
@@ -30,7 +32,7 @@ export type QuotationSource = {
   no_quote: string;
   pipeline_name: string;
   pipeline_type?: string | null;
-  progress_type?: string | null;
+  sales_stage?: string | null;
   value?: number | null;
   pic_name?: string | null;
   pic_salutation?: PicSalutation | string | null;
@@ -90,7 +92,8 @@ export function buildQuotationData(source: QuotationSource): QuotationTemplateFi
     pic_full: picForLetter,
     pipeline_name: text(source.pipeline_name),
     pipeline_type: text(source.pipeline_type),
-    progress_type: text(source.progress_type),
+    sales_stage: text(source.sales_stage),
+    progress_type: text(source.sales_stage),
     value_idr: formatValueIdr(source.value ?? null),
     price_validity_days:
       source.price_validity_days != null

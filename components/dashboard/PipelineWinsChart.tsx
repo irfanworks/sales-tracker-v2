@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Trophy } from "lucide-react";
 import type { MonthlyWinPoint } from "@/lib/dashboard";
 import { useCurrencyScope, type Currency } from "@/components/ui/CurrencyToggle";
+import { jakartaTodayKey } from "@/lib/timezone";
 
 const CHART_W = 560;
 const CHART_H = 280;
@@ -42,11 +43,10 @@ export function PipelineWinsChart({
   year: number;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [currentMonthKey, setCurrentMonthKey] = useState<string | null>(null);
   const currencyScope = useCurrencyScope();
   const currency = currencyScope?.currency ?? "IDR";
-  const convert =
-    currencyScope?.convert ??
-    ((n: number) => n);
+  const convert = currencyScope?.convert ?? ((n: number) => n);
   const formatFull =
     currencyScope?.format ??
     ((n: number) =>
@@ -55,6 +55,13 @@ export function PipelineWinsChart({
         currency: "IDR",
         minimumFractionDigits: 0,
       }).format(n));
+
+  // Avoid SSR/client timezone mismatch for "current month" highlight
+  useEffect(() => {
+    const today = jakartaTodayKey();
+    const y = Number(today.slice(0, 4));
+    if (y === year) setCurrentMonthKey(today.slice(0, 7));
+  }, [year]);
 
   const { maxWins, winTicks } = useMemo(() => {
     const raw = Math.max(...(series?.map((d) => d.wins) ?? []), 1);
@@ -156,8 +163,9 @@ export function PipelineWinsChart({
             const barH = Math.max((d.wins / maxWins) * innerH, d.wins > 0 ? 3 : 0);
             const y = padT + innerH - barH;
             const isHot = hovered === d.key;
-            const currentMonth = new Date().getMonth() === i && year === new Date().getFullYear();
+            const currentMonth = currentMonthKey === d.key;
             const valueLabel = formatWinValue(d.value, currency, convert);
+            const tip = `${d.fullLabel}: ${d.wins} wins · ${formatFull(d.value)}`;
 
             return (
               <g
@@ -165,6 +173,7 @@ export function PipelineWinsChart({
                 onMouseEnter={() => setHovered(d.key)}
                 onMouseLeave={() => setHovered(null)}
                 style={{ cursor: "default" }}
+                aria-label={tip}
               >
                 <rect
                   x={cx - barW / 2}
@@ -215,9 +224,6 @@ export function PipelineWinsChart({
                 >
                   {d.label}
                 </text>
-                <title>
-                  {d.fullLabel}: {d.wins} wins · {formatFull(d.value)}
-                </title>
               </g>
             );
           })}

@@ -25,7 +25,8 @@ Official letterhead lives at `templates/quotation/enercon-quotation-template.doc
 | `{{pic_salutation}}` | `Mr.` / `Mrs.` / `Ms.` (empty if unset) |
 | `{{pic_full}}` | Same as formatted `{{pic_name}}` |
 | `{{pipeline_type}}` | Project / Trading / Service |
-| `{{progress_type}}` | Progress type |
+| `{{sales_stage}}` | Sales stage (Identified … Win / Lose / On Hold) |
+| `{{progress_type}}` | Legacy alias — same text as `{{sales_stage}}` |
 | `{{value_idr}}` | Tender value as `Rp …` |
 | `{{sales_email}}` | Owner email |
 

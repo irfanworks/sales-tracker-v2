@@ -14,7 +14,7 @@ import type { DailyQuotePoint, MonthlyWinPoint } from "@/lib/dashboard";
 
 function HeroBody({
   totalPipelineValue,
-  hotProspectValue,
+  lateStageValue,
   totalWon,
   closingForTarget,
   annualSalesTarget,
@@ -32,7 +32,7 @@ function HeroBody({
   children,
 }: {
   totalPipelineValue: number;
-  hotProspectValue: number;
+  lateStageValue: number;
   totalWon: number;
   closingForTarget: number;
   annualSalesTarget: number | null;
@@ -81,8 +81,8 @@ function HeroBody({
           variant="pipeline"
         />
         <DashboardSummaryCard
-          label="Hot Prospect"
-          valueIdr={hotProspectValue}
+          label="Late Stage"
+          valueIdr={lateStageValue}
           currency={currency}
           usdPerIdr={usdPerIdr}
           sgdPerIdr={sgdPerIdr}
@@ -121,7 +121,7 @@ function HeroBody({
 
 export function DashboardHeroLayout({
   totalPipelineValue,
-  hotProspectValue,
+  lateStageValue,
   totalWon,
   closingForTarget,
   annualSalesTarget,
@@ -141,7 +141,7 @@ export function DashboardHeroLayout({
   children,
 }: {
   totalPipelineValue: number;
-  hotProspectValue: number;
+  lateStageValue: number;
   totalWon: number;
   closingForTarget: number;
   annualSalesTarget: number | null;
@@ -164,7 +164,7 @@ export function DashboardHeroLayout({
     <CurrencyProvider usdPerIdr={usdPerIdr} sgdPerIdr={sgdPerIdr}>
       <HeroBody
         totalPipelineValue={totalPipelineValue}
-        hotProspectValue={hotProspectValue}
+        lateStageValue={lateStageValue}
         totalWon={totalWon}
         closingForTarget={closingForTarget}
         annualSalesTarget={annualSalesTarget}

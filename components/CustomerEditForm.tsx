@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2, UserPlus, Trash2, Pencil, CheckCircle2 } from "lucide-react";
 import { slugWithId } from "@/lib/slugify";
+import { isCustomerRole } from "@/lib/types/database";
 
 interface PicRow {
   id?: string;
@@ -29,19 +30,24 @@ export function CustomerEditForm({
   customerSlug,
   initialName,
   initialSector,
+  initialCustomerRole,
   initialPics,
   sectorOptions,
+  customerRoleOptions,
 }: {
   customerId: string;
   customerSlug?: string | null;
   initialName: string;
   initialSector: string;
+  initialCustomerRole: string;
   initialPics: PicRow[];
   sectorOptions: readonly string[];
+  customerRoleOptions: readonly string[];
 }) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [sector, setSector] = useState(initialSector);
+  const [customerRole, setCustomerRole] = useState(initialCustomerRole);
   const [savedPics, setSavedPics] = useState<PicRow[]>(initialPics);
   const [draftPics, setDraftPics] = useState<PicRow[]>(
     initialPics.length > 0 ? initialPics : [emptyPic()]
@@ -54,10 +60,11 @@ export function CustomerEditForm({
   useEffect(() => {
     setName(initialName);
     setSector(initialSector);
+    setCustomerRole(initialCustomerRole);
     setSavedPics(initialPics);
     setDraftPics(initialPics.length > 0 ? initialPics : [emptyPic()]);
     setEditingPics(initialPics.length === 0);
-  }, [initialName, initialSector, initialPics]);
+  }, [initialName, initialSector, initialCustomerRole, initialPics]);
 
   function addPic() {
     setDraftPics((prev) => [...prev, emptyPic()]);
@@ -103,13 +110,24 @@ export function CustomerEditForm({
       return;
     }
 
+    const role = customerRole.trim() || null;
+    if (role && !isCustomerRole(role)) {
+      setError("Invalid customer role.");
+      return;
+    }
+
     setLoading(true);
     const supabase = createClient();
 
     const newSlug = slugWithId(name.trim(), customerId);
     const { error: updateError } = await supabase
       .from("customers")
-      .update({ name: name.trim(), sector: sector || null, slug: newSlug })
+      .update({
+        name: name.trim(),
+        sector: sector || null,
+        customer_role: role,
+        slug: newSlug,
+      })
       .eq("id", customerId);
 
     if (updateError) {
@@ -235,6 +253,24 @@ export function CustomerEditForm({
               </option>
             ))}
           </select>
+        </div>
+        <div className="min-w-0">
+          <label className="mb-1 block text-sm font-medium text-slate-700">Customer role</label>
+          <select
+            value={customerRole}
+            onChange={(e) => setCustomerRole(e.target.value)}
+            className="input-field"
+          >
+            <option value="">— Not set —</option>
+            {customerRoleOptions.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            Optional. Categorize who this customer is to Enercon.
+          </p>
         </div>
       </div>
 

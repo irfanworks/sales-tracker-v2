@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Clock3, Handshake, X } from "lucide-react";
 import type { OverdueOutcomePipeline } from "@/lib/overdueOutcome";
-import { OutcomeStatusSwitcher } from "@/components/OutcomeStatusSwitcher";
+import { SalesStageSwitcher } from "@/components/SalesStageSwitcher";
+import { isExcludedSalesStage, isTerminalWinLose } from "@/lib/salesStage";
 import { jakartaTodayKey } from "@/lib/timezone";
 
 const SNOOZE_KEY = "overdue-outcome-snooze-day";
@@ -122,8 +123,8 @@ export function OverdueOutcomeModal({
       : `A quick check-in on ${countLabel}`;
 
   const subcopy = isAdmin
-    ? "A few team deals passed their closing date without a Win / Lose / On Hold. Clearing them keeps the forecast honest."
-    : "A few of your deals passed their closing date without a Win / Lose / On Hold. A quick update keeps your pipeline tidy.";
+    ? "A few team deals passed their closing date without reaching Win / Lose / On Hold. Moving the sales stage keeps the forecast honest."
+    : "A few of your deals passed their closing date without reaching Win / Lose / On Hold. A quick stage update keeps your pipeline tidy.";
 
   return (
     <>
@@ -140,7 +141,7 @@ export function OverdueOutcomeModal({
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold text-slate-900">
-                  {countLabel} awaiting outcome
+                  {countLabel} awaiting a stage update
                 </span>
                 <span className="block text-[11px] font-medium text-slate-500">
                   Tap to update · remind again tomorrow
@@ -251,13 +252,15 @@ export function OverdueOutcomeModal({
                             </span>
                           </p>
                         </div>
-                        <OutcomeStatusSwitcher
+                        <SalesStageSwitcher
                           pipelineId={p.id}
-                          value={null}
+                          value={p.sales_stage}
                           pipelineLabel={`${p.no_quote} · ${p.pipeline_name}`}
                           size="sm"
                           onChanged={(next) => {
-                            if (next) markResolved(p.id);
+                            if (isTerminalWinLose(next) || isExcludedSalesStage(next)) {
+                              markResolved(p.id);
+                            }
                           }}
                         />
                       </div>

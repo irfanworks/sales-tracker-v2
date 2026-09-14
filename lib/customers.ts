@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getSupabase } from "@/lib/auth";
 import { isUuid } from "@/lib/isUuid";
 import { slugWithId } from "@/lib/slugify";
@@ -10,7 +11,15 @@ function decodeSlugParam(value: string) {
   }
 }
 
-type CustomerRow = { id: string; name: string; sector: string | null; slug: string | null };
+type CustomerRow = {
+  id: string;
+  name: string;
+  sector: string | null;
+  customer_role: string | null;
+  slug: string | null;
+};
+
+const CUSTOMER_LOOKUP_SELECT = "id, name, sector, customer_role, slug";
 
 function normalizeRpcRow(data: unknown): CustomerRow | null {
   if (!data) return null;
@@ -18,7 +27,8 @@ function normalizeRpcRow(data: unknown): CustomerRow | null {
   return data as CustomerRow;
 }
 
-export async function getCustomerBySlugOrId(slugOrId: string) {
+/** Per-request memoized lookup — shared by generateMetadata + page. */
+export const getCustomerBySlugOrId = cache(async (slugOrId: string) => {
   const slugParam = decodeSlugParam(slugOrId);
   const supabase = await getSupabase();
 
@@ -30,7 +40,7 @@ export async function getCustomerBySlugOrId(slugOrId: string) {
 
   const { data: bySlug } = await supabase
     .from("customers")
-    .select("id, name, sector, slug")
+    .select(CUSTOMER_LOOKUP_SELECT)
     .eq("slug", slugParam)
     .maybeSingle();
 
@@ -39,7 +49,7 @@ export async function getCustomerBySlugOrId(slugOrId: string) {
   if (isUuid(slugParam)) {
     const { data: byId, error } = await supabase
       .from("customers")
-      .select("id, name, sector, slug")
+      .select(CUSTOMER_LOOKUP_SELECT)
       .eq("id", slugParam)
       .maybeSingle();
 
@@ -48,7 +58,7 @@ export async function getCustomerBySlugOrId(slugOrId: string) {
   }
 
   return { customer: null, error: null };
-}
+});
 
 export async function ensureCustomerSlug(
   customer: { id: string; name: string; slug?: string | null }

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getSupabase } from "@/lib/auth";
 import { isUuid } from "@/lib/isUuid";
 import { pipelineSlugFor } from "@/lib/pipelinePaths";
@@ -9,6 +10,9 @@ function decodeSlugParam(value: string) {
     return value.trim();
   }
 }
+
+const PIPELINE_LOOKUP_SELECT =
+  "id, slug, no_quote, pipeline_name, created_at, sales_id, customer_id, sales_stage, status";
 
 type PipelineRow = {
   id: string;
@@ -24,7 +28,8 @@ function normalizeRpcRow(data: unknown): PipelineRow | null {
   return data as PipelineRow;
 }
 
-export async function getPipelineBySlugOrId(slugOrId: string) {
+/** Per-request memoized lookup — shared by generateMetadata + page. */
+export const getPipelineBySlugOrId = cache(async (slugOrId: string) => {
   const slugParam = decodeSlugParam(slugOrId);
   const supabase = await getSupabase();
 
@@ -36,7 +41,7 @@ export async function getPipelineBySlugOrId(slugOrId: string) {
 
   const { data: bySlug } = await supabase
     .from("pipelines")
-    .select("*")
+    .select(PIPELINE_LOOKUP_SELECT)
     .eq("slug", slugParam)
     .maybeSingle();
 
@@ -45,7 +50,7 @@ export async function getPipelineBySlugOrId(slugOrId: string) {
   if (isUuid(slugParam)) {
     const { data: byId, error } = await supabase
       .from("pipelines")
-      .select("*")
+      .select(PIPELINE_LOOKUP_SELECT)
       .eq("id", slugParam)
       .maybeSingle();
 
@@ -54,7 +59,7 @@ export async function getPipelineBySlugOrId(slugOrId: string) {
   }
 
   return { project: null, error: null };
-}
+});
 
 export async function ensurePipelineSlug(project: {
   id: string;
