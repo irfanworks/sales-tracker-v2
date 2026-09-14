@@ -82,7 +82,7 @@ export function MobileMoreSheet({
   const otherItems = [
     { href: "/dashboard/lost-analysis", label: "Lost Analysis", icon: TrendingDown },
     { href: "/dashboard/sales-activity", label: "Sales Activity", icon: Activity },
-    ...(profile?.role === "admin"
+    ...(profile?.role?.toLowerCase() === "admin"
       ? [{ href: "/dashboard/ai-analytics", label: "AI Analytics", icon: Bot }]
       : []),
     { href: "/dashboard/settings", label: "Settings", icon: Settings },
