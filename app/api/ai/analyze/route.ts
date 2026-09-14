@@ -1,4 +1,4 @@
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { streamText } from "ai";
 import { getAuthUser, getProfile, getSupabase } from "@/lib/auth";
 import { buildExecutiveSnapshot } from "@/lib/ai/executiveSnapshot";
@@ -16,6 +16,16 @@ type AnalyzeBody = {
   prompt?: string;
   presetId?: string;
 };
+
+function getGoogleApiKey(): string | null {
+  const raw =
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
+    process.env.GOOGLE_API_KEY ??
+    process.env.GEMINI_API_KEY ??
+    "";
+  const key = raw.trim().replace(/^["']|["']$/g, "");
+  return key.length > 0 ? key : null;
+}
 
 function buildSystemPrompt(snapshotJson: string) {
   return `You are the AI Business Executive Assistant for Enercon Sales Tracker.
@@ -40,15 +50,16 @@ export async function POST(req: Request) {
     }
 
     const profile = await getProfile();
-    if (profile?.role !== "admin") {
+    if (profile?.role?.toLowerCase() !== "admin") {
       return Response.json({ error: DENIED }, { status: 403 });
     }
 
-    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    const apiKey = getGoogleApiKey();
+    if (!apiKey) {
       return Response.json(
         {
           error:
-            "GOOGLE_GENERATIVE_AI_API_KEY belum dikonfigurasi di environment server.",
+            "GOOGLE_GENERATIVE_AI_API_KEY belum tersedia di runtime. Setelah menambahkannya di Vercel → Settings → Environment Variables, lakukan Redeploy (Deployments → ⋯ → Redeploy) agar key ikut ke production.",
         },
         { status: 500 }
       );
@@ -67,6 +78,8 @@ export async function POST(req: Request) {
     const supabase = await getSupabase();
     const snapshot = await buildExecutiveSnapshot(supabase);
     const snapshotJson = JSON.stringify(snapshot);
+
+    const google = createGoogleGenerativeAI({ apiKey });
 
     const result = streamText({
       model: google(GEMINI_MODEL),
