@@ -1,23 +1,21 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-
-function cleanEnv(value: string | undefined): string {
-  return (value ?? "").trim().replace(/^["']|["']$/g, "");
-}
+import { runtimeEnv } from "@/lib/serverEnv";
 
 /** Service-role client — server-only. Never import from client components. */
 export function createAdminClient() {
-  // Next.js only inlines env vars that are referenced as static member access.
-  // Dynamic process.env[name] is undefined in production even when Vercel has the key.
-  const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const url = runtimeEnv("NEXT_PUBLIC_SUPABASE_URL");
   const key =
-    cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY) ||
-    // Fallback: misspelled name that was saved in Vercel (SUPABASE → SUPABSE).
-    cleanEnv(process.env.SUPABSE_SERVICE_ROLE_KEY);
+    runtimeEnv("SUPABASE_SERVICE_ROLE_KEY") ||
+    runtimeEnv("SUPABSE_SERVICE_ROLE_KEY");
 
   if (!url || !key) {
     throw new Error(
-      "Missing SUPABASE_SERVICE_ROLE_KEY at runtime. Confirm the variable name in Vercel (Production), then Redeploy the latest deployment."
+      `Missing ${
+        !key ? "SUPABASE_SERVICE_ROLE_KEY" : "NEXT_PUBLIC_SUPABASE_URL"
+      } in this Vercel project (url ${url ? "ok" : "missing"}, service role ${
+        key ? "ok" : "missing"
+      }). Add the key to BOTH projects (sales-tracker and sales-tracker-v2.1), turn Sensitive OFF, environment Production, then Redeploy.`
     );
   }
 

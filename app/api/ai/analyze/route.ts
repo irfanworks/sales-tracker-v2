@@ -3,6 +3,7 @@ import { streamText } from "ai";
 import { getAuthUser, getProfile, getSupabase } from "@/lib/auth";
 import { buildExecutiveSnapshot } from "@/lib/ai/executiveSnapshot";
 import { getPresetById } from "@/lib/ai/presets";
+import { runtimeEnv } from "@/lib/serverEnv";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -18,12 +19,10 @@ type AnalyzeBody = {
 };
 
 function getGoogleApiKey(): string | null {
-  const raw =
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY ??
-    process.env.GOOGLE_API_KEY ??
-    process.env.GEMINI_API_KEY ??
-    "";
-  const key = raw.trim().replace(/^["']|["']$/g, "");
+  const key =
+    runtimeEnv("GOOGLE_GENERATIVE_AI_API_KEY") ||
+    runtimeEnv("GOOGLE_API_KEY") ||
+    runtimeEnv("GEMINI_API_KEY");
   return key.length > 0 ? key : null;
 }
 
