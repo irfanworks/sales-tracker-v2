@@ -6,8 +6,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { validatePassword } from "@/lib/password";
 import type { UserRole } from "@/lib/types/database";
 
-export const runtime = "nodejs";
-
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 async function requireAdmin() {
