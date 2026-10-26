@@ -2,12 +2,23 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { KeyRound, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
-import {
-  createManagedUser,
-  deleteManagedUser,
-  resetManagedUserPassword,
-  updateManagedUser,
-} from "@/app/dashboard/settings/userActions";
+async function adminUserRequest(
+  op: "create" | "update" | "password" | "delete",
+  payload: Record<string, unknown> = {}
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await fetch("/api/admin/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ op, ...payload }),
+  });
+  try {
+    const body = (await res.json()) as { ok?: boolean; error?: string };
+    if (body.ok) return { ok: true };
+    return { ok: false, error: body.error || `Request failed (${res.status}).` };
+  } catch {
+    return { ok: false, error: `Request failed (${res.status}).` };
+  }
+}
 import { formatNumberAsThousands, formatThousandsInput, parseThousandsInput } from "@/lib/formatThousands";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
@@ -109,7 +120,7 @@ export function AdminUsersManager({
       return;
     }
     startTransition(async () => {
-      const result = await createManagedUser({
+      const result = await adminUserRequest("create", {
         email: form.email,
         password: form.password,
         displayName: form.displayName,
@@ -135,7 +146,7 @@ export function AdminUsersManager({
       return;
     }
     startTransition(async () => {
-      const result = await updateManagedUser({
+      const result = await adminUserRequest("update", {
         id: mode.user.id,
         email: form.email,
         displayName: form.displayName,
@@ -160,7 +171,7 @@ export function AdminUsersManager({
       return;
     }
     startTransition(async () => {
-      const result = await resetManagedUserPassword({
+      const result = await adminUserRequest("password", {
         id: mode.user.id,
         password: form.password,
       });
@@ -183,7 +194,7 @@ export function AdminUsersManager({
     setError(null);
     setSuccess(null);
     startTransition(async () => {
-      const result = await deleteManagedUser(user.id);
+      const result = await adminUserRequest("delete", { id: user.id });
       if (!result.ok) {
         setError(result.error);
         setDeleteTarget(null);
